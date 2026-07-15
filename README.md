@@ -23,6 +23,11 @@
   <strong>The Ultimate AI Command Center — All Your Intelligence, Unified.</strong>
 </p>
 
+> [!WARNING]
+> **🚧 Currently Under Upgradation**
+>
+> This project is currently undergoing major upgrades. Some features might be unstable or temporarily unavailable while changes are being made.
+
 <p align="center">
   A production-grade generative AI chatbot featuring real-time streaming chat, professional Indic TTS/STT, Retrieval-Augmented Generation (RAG), sandboxed Python code execution, and enterprise-level authentication.
 </p>
