@@ -24,8 +24,7 @@ jobs:
           if [ -d "tests" ] && [ "$(find tests -name 'test_*.py' -o -name '*_test.py' 2>/dev/null | head -1)" ]; then
             python -m pytest tests/ -v --tb=short --cov=app
           else
-            echo "⚠️  No test files found in tests/ — skipping pytest"
-            echo "   (tests/ is excluded from the repository via .gitignore)"
+            echo "⚠️  No test files found — skipping pytest"
           fi
         env:
           ENVIRONMENT: test
@@ -59,5 +58,5 @@ jobs:
           node-version: "22"
           cache: "npm"
           cache-dependency-path: admin-frontend/package-lock.json
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
       - run: npm run build
