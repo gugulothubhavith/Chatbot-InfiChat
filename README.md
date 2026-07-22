@@ -21,7 +21,6 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis 7](https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Electron](https://img.shields.io/badge/Electron-41-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://www.electronjs.org/)
 
 <br/>
@@ -259,7 +258,7 @@ InfiChat employs an advanced **Multi-Agent Code Orchestrator** (`code_orchestrat
 **Agent Pipeline:**
 
 ```
-User Request → 🧠 Planner → 💻 Coder → 🔍 Reviewer → ✅ Orchestrator → 🐳 Docker Sandbox → 📺 Live Output
+User Request → 🧠 Planner → 💻 Coder → 🔍 Reviewer → ✅ Orchestrator → 💻 Local Subprocess Sandbox → 📺 Live Output
 ```
 
 | Agent | Model | Responsibility |
@@ -273,7 +272,7 @@ User Request → 🧠 Planner → 💻 Coder → 🔍 Reviewer → ✅ Orchestra
 
 | Control | Implementation |
 |:---|:---|
-| **Isolation** | Hardened Docker container — zero host filesystem access |
+| **Isolation** | Zero-Trust AST Validator — blocks dangerous operations prior to local execution |
 | **Live Streaming** | Real-time stdout/stderr via WebSocket (`ws_code.py`) |
 | **Auto-Debugging** | Agent reads runtime errors → self-corrects → re-executes |
 | **CPU Limit** | 50% CPU cap (`cpu_quota=50000`) |
@@ -460,7 +459,7 @@ graph TD
         TTS["🎙️ TTS Engine<br/>(Edge-TTS + Indic Voice)"]
         STT["🗣️ STT Engine<br/>(Faster Whisper, Offline)"]
         RAG["📚 RAG Pipeline<br/>(Sentence Transformers)"]
-        Sandbox["🐳 Code Sandbox<br/>(Isolated Docker)"]
+        Sandbox["💻 Code Sandbox<br/>(Local Subprocess)"]
         ImgGen["🖼️ Image Generation<br/>(Pollinations / SDXL)"]
         Research["🔬 Deep Research<br/>(DuckDuckGo + Arxiv + NLP)"]
         Thinking["🤔 Deep Thinking<br/>(Extended Chain-of-Thought)"]
@@ -537,7 +536,7 @@ graph TD
 │     │   └→ ChromaDB/FAISS similarity search → inject context             │
 │     │                                                                   │
 │     ├── 💻 Code task?                                                    │
-│     │   └→ Multi-Agent Orchestrator → Docker Sandbox → stream output     │
+│     │   └→ Multi-Agent Orchestrator → Local Sandbox → stream output     │
 │     │                                                                   │
 │     └── 💬 Standard chat?                                                │
 │         └→ Smart Router → stream SSE tokens from Groq/Gemini/OpenRouter  │
@@ -547,6 +546,127 @@ graph TD
 │  6. PostgreSQL persists conversation + Redis caches session state        │
 │                                                                         │
 └──────────────────────────────────────────────────────────────────────────┘
+```
+
+### 🤖 Multi-Agent Autonomous Code Pipeline
+
+```mermaid
+graph TD
+    User["👤 User Request"]
+    
+    subgraph "🧠 AI Orchestrator Layer"
+        Planner["📋 Planner Agent<br/>(Llama 3.3 via Groq)<br/>Decomposes Task"]
+        Coder["💻 Coder Agent<br/>(NVIDIA StarCoder2 / GLM 5.2)<br/>Generates Code"]
+        Reviewer["🔍 Reviewer Agent<br/>(NVIDIA NIM)<br/>Audits & Secures Code"]
+    end
+    
+    subgraph "💻 Local Execution Sandbox"
+        Proc["Local Subprocess<br/>(Python tempfile)"]
+        Resources["Security Policies:<br/>- AST Safety Validation<br/>- Execution Timeout (30s)"]
+        Exec["Runtime Execution"]
+    end
+    
+    Stream["📺 Real-time WebSocket Stream<br/>(stdout/stderr to User UI)"]
+    
+    User --> Planner
+    Planner --> Coder
+    Coder --> Reviewer
+    Reviewer -- "Fails Audit / Refactors" --> Coder
+    Reviewer -- "Approved" --> Proc
+    Proc --- Resources
+    Proc --> Exec
+    Exec -- "Runtime Error" --> Reviewer
+    Exec -- "Success" --> Stream
+```
+
+### 🔬 Deep Research & Synthesis Engine
+
+```mermaid
+graph TD
+    Query["🔍 User Query"]
+    
+    subgraph "🧠 Deep Research Pipeline"
+        Extract["🔑 Keyword Extraction<br/>(YAKE + SpaCy NER)"]
+        
+        subgraph "🌐 Parallel Search Dispatch"
+            DDG["DuckDuckGo API<br/>(Live Web Data)"]
+            Arxiv["Arxiv API<br/>(Academic Papers)"]
+        end
+        
+        Scrape["📄 Content Extraction<br/>(trafilatura)"]
+        Synthesis["🧠 Multi-Source Synthesis<br/>(LLM Aggregation)"]
+    end
+    
+    Query --> Extract
+    Extract --> DDG
+    Extract --> Arxiv
+    DDG --> Scrape
+    Arxiv --> Scrape
+    Scrape --> Synthesis
+    Synthesis --> Stream["📡 Streaming Response<br/>(With Citations & Grounding)"]
+```
+
+### 📚 RAG & Vector Knowledge Base
+
+```mermaid
+graph LR
+    subgraph "📥 Document Ingestion Pipeline"
+        Doc["📄 Upload Document<br/>(PDF, DOCX, TXT, HTML)"]
+        Parser["✂️ Parsers<br/>(PyPDF, BeautifulSoup)"]
+        Chunker["🧩 Intelligent Chunker<br/>(512 tokens / 64 overlap)"]
+        Embedder["🧠 Neural Embedder<br/>(all-MiniLM-L6-v2)"]
+        VDB[("🔵 Vector DB<br/>(ChromaDB/FAISS)")]
+    end
+    
+    subgraph "💬 Query Execution"
+        Query["User Question"]
+        SimSearch["🔍 Cosine Similarity Search"]
+        LLM["🤖 LLM Context Injection"]
+        Response["💬 Grounded Response"]
+    end
+    
+    Doc --> Parser --> Chunker --> Embedder --> VDB
+    Query --> SimSearch
+    VDB -. "Top-k semantic chunks" .-> SimSearch
+    SimSearch --> LLM
+    LLM --> Response
+```
+
+### 🎛️ Enterprise Admin Command Center
+
+```mermaid
+graph TD
+    Admin["🎛️ Super Admin / Operator"]
+    
+    subgraph "🏢 Admin Frontend (React + Three.js)"
+        Dash["📊 Telemetry & Analytics"]
+        Infra["🏗️ 3D Infrastructure Map"]
+        Sec["🔒 Security & AI Firewall"]
+        Ops["⚙️ Auto-Healing & Chaos Monkey"]
+        Biz["💼 Subscriptions & Tenancy"]
+    end
+    
+    subgraph "🛡️ API Governance Layer"
+        Audit["Audit Logger (Tamper-Proof)"]
+        Rules["RBAC & Access Control"]
+        Meter["Usage Metering & Limits"]
+    end
+    
+    DB[("🐘 PostgreSQL / Redis State")]
+    
+    Admin --> Dash
+    Admin --> Infra
+    Admin --> Sec
+    Admin --> Ops
+    Admin --> Biz
+    
+    Dash --> Audit
+    Sec --> Rules
+    Biz --> Meter
+    
+    Audit --> DB
+    Rules --> DB
+    Meter --> DB
 ```
 
 ---
@@ -643,7 +763,6 @@ graph TD
 |:---|:---|
 | PostgreSQL 16 | Primary relational database (users, chats, plans, orgs) |
 | Redis 7 | Session caching, pub/sub, rate limit counters |
-| Docker | Container runtime + code sandbox isolation |
 | asyncpg | High-performance async PostgreSQL driver |
 | aiosqlite | Async SQLite driver for local development |
 | pip-audit | Dependency vulnerability scanning |
@@ -668,7 +787,6 @@ graph TD
 |:---|:---:|:---|
 | **Python** | 3.11+ | [python.org](https://www.python.org/downloads/) |
 | **Node.js** | 20+ | [nodejs.org](https://nodejs.org) |
-| **Docker Desktop** | Latest | [docker.com](https://www.docker.com/products/docker-desktop/) |
 | **Git** | Latest | [git-scm.com](https://git-scm.com) |
 
 ### Optional Software
@@ -695,7 +813,7 @@ cd AI-Chatbot-InfiChat
 
 **The `setup_windows.ps1` script automatically:**
 
-1. ✅ Verifies Docker Desktop and Python 3.11+ are installed
+1. ✅ Verifies Python 3.11+ and Node.js are installed
 2. ✅ Prompts for API keys and writes your `.env` file
 3. ✅ Creates a Python virtual environment and installs all 83 dependencies
 4. ✅ Initializes the PostgreSQL database schema
@@ -703,7 +821,6 @@ cd AI-Chatbot-InfiChat
 6. ✅ Opens the application at **`http://localhost:5173`**
 
 > [!TIP]
-> On first run, Docker will pull required images (~2–3 GB). This is a one-time operation.
 
 ---
 
@@ -800,14 +917,6 @@ npm run dev
 
 </details>
 
-<details>
-<summary><strong>Option D — Docker Compose</strong></summary>
-
-```bash
-docker compose up --build
-```
-
-</details>
 
 ### Step 5: Access the Application
 
@@ -857,7 +966,6 @@ OPENROUTER_API_KEY=sk-or-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # ─── Database Configuration ───────────────────────────────────
 DATABASE_URL=postgresql://ai:ai_pass@localhost:5432/autoagent
-# For local dev without Docker:
 # DATABASE_URL=sqlite:///./data/infichat.db
 REDIS_URL=redis://localhost:6379/0
 
@@ -947,7 +1055,7 @@ AI-Chatbot-InfiChat/
 │   │   │   ├── voice_service.py             # Voice pipeline: TTS + STT (9,342 B)
 │   │   │   ├── indic_voice_service.py       # Indian language specialization (3,767 B)
 │   │   │   ├── rag_service.py               # RAG: embed, store, retrieve (16,902 B)
-│   │   │   ├── sandbox_service.py           # Docker sandbox lifecycle (11,262 B)
+│   │   │   ├── sandbox_service.py           # Local subprocess sandbox lifecycle (11,262 B)
 │   │   │   ├── image_service.py             # Image generation orchestration (4,478 B)
 │   │   │   ├── email_service.py             # Transactional email & OTP (20,665 B)
 │   │   │   ├── agent_service.py             # Agent task coordination (3,447 B)
@@ -1232,7 +1340,7 @@ POST   /api/research/stream            # Deep research (web + academic)
 POST   /api/thinking/stream            # Extended chain-of-thought
 
 # ── Code Execution ──────────────────────────────────────────────
-POST   /api/code/execute               # Run Python in Docker sandbox
+POST   /api/code/execute               # Run Python in local sandbox
 WS     /ws/code                        # Live code execution streaming
 
 # ── Image Generation ────────────────────────────────────────────
@@ -1255,7 +1363,7 @@ InfiChat implements a **6-layer defense-in-depth** security architecture:
 │  Local inference • No telemetry • Self-hosted • Zero data leak   │
 ├─────────────────────────────────────────────────────────────────┤
 │                    LAYER 5: SANDBOX SECURITY                     │
-│  Docker isolation • Resource limits • Network disabled           │
+│  AST Zero-Trust validation • Local subprocess execution           │
 │  Ephemeral containers • No host filesystem access                │
 ├─────────────────────────────────────────────────────────────────┤
 │                    LAYER 4: DATA SECURITY                        │
@@ -1282,63 +1390,21 @@ InfiChat implements a **6-layer defense-in-depth** security architecture:
 | **2. Authorization** | RBAC (3 roles), permission guards, admin isolation | `rbac.py`, `deps.py` |
 | **3. Request Pipeline** | Rate limiting, CORS, CSRF, input sanitization, AI firewall, usage tracking, tenant isolation | `middleware/*.py` |
 | **4. Data Security** | Field-level encryption, ORM-only queries, PII scrubbing, audit logging | `encryption.py`, `privacy_service.py`, `audit_logging.py` |
-| **5. Sandbox** | Docker isolation, 256MB/50% CPU limits, network disabled, ephemeral containers | `sandbox_service.py` |
+| **5. Sandbox** | Local subprocess isolation, Timeout enforcements, AST code safety validator | `sandbox_service.py` |
 | **6. Privacy** | Local inference (Whisper, embeddings), zero telemetry, self-hosted | Architecture-level |
 
 ---
 
 ## 🚀 Deployment Guide
 
-### Production Docker Compose
-
-```yaml
-# docker-compose.prod.yml
-version: "3.9"
-services:
-  backend:
-    build: ./backend
-    environment:
-      - ENVIRONMENT=production
-      - DATABASE_URL=${DATABASE_URL}
-      - SECRET_KEY=${SECRET_KEY}
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    depends_on:
-      - postgres
-      - redis
-
-  frontend:
-    build: ./frontend
-    restart: unless-stopped
-    ports:
-      - "5173:80"
-
-  admin-frontend:
-    build: ./admin-frontend
-    restart: unless-stopped
-    ports:
-      - "5174:80"
-
-  postgres:
-    image: postgres:16-alpine
-    volumes:
-      - pg_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_DB: autoagent
-      POSTGRES_USER: ai
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    volumes:
-      - redis_data:/data
-
-volumes:
-  pg_data:
-  redis_data:
+### Production Bare-Metal (PM2)
+For production environments, use PM2 to manage the FastAPI and Vite servers.
+```bash
+npm install -g pm2
+pm2 start "cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8080" --name "infichat-backend"
+pm2 start "cd frontend && npm run preview" --name "infichat-frontend"
+pm2 start "cd admin-frontend && npm run preview" --name "infichat-admin"
+pm2 save
 ```
 
 ### Reverse Proxy (Nginx)
@@ -1489,7 +1555,7 @@ Reviewer Agent (NVIDIA NIM) audits for bugs + security
 Orchestrator validates and approves
       │
       ▼
-sandbox_service.py → docker.client.containers.run(
+sandbox_service.py → subprocess.Popen(
     image="python:3.11-slim",
     command=["python", "-c", code],
     mem_limit="256m",
@@ -1653,17 +1719,7 @@ python fix_db_schema.py
 
 </details>
 
-<details>
-<summary><strong>Docker sandbox fails</strong></summary>
 
-```bash
-# Ensure Docker Desktop is running
-docker info
-# Pull the Python sandbox image
-docker pull python:3.11-slim
-```
-
-</details>
 
 <details>
 <summary><strong>TTS produces no audio</strong></summary>
@@ -1702,8 +1758,6 @@ rm -rf data/chromadb/
 # If using bundled Redis (Windows):
 cd redis && redis-server.exe redis.windows.conf
 
-# Or install Redis via Docker:
-docker run -d -p 6379:6379 redis:7-alpine
 ```
 
 </details>
@@ -1714,7 +1768,6 @@ docker run -d -p 6379:6379 redis:7-alpine
 |:---|:---|
 | `backend/backend_errors.log` | Backend Python errors |
 | Browser DevTools → Network | Frontend API call errors |
-| `docker logs <container_id>` | Docker container logs |
 | Terminal (uvicorn) | Real-time backend stdout |
 
 ---
