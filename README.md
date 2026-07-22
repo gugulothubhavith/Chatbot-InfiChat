@@ -2,11 +2,6 @@
   <img src="frontend/public/app_name.png" height="70" alt="InfiChat Logo">
 </p>
 
-<p align="center">
-  <img src="Demo.gif" width="90%" alt="InfiChat Demo" />
-  <br>
-  <em>▶️ InfiChat Platform Demonstration — Real-Time Streaming & Multi-Agent Code Execution</em>
-</p>
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"></a>
