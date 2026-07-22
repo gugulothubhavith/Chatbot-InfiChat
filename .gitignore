@@ -1,134 +1,175 @@
-# --- Python ---
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-.pytest_cache/
-.coverage
-.cache
-backend/.env
-backend/logs/
+# ╔════════════════════════════════════════════════════════════════════╗
+# ║  InfiChat — Proprietary Source Code Protection                    ║
+# ║  This .gitignore hides ALL core intellectual property while       ║
+# ║  exposing only configs, docs, and setup files for reference.      ║
+# ╚════════════════════════════════════════════════════════════════════╝
 
-# --- Node/React ---
-node_modules/
-frontend/node_modules/
-frontend/dist/
-frontend/build_output/
-frontend/dist_electron/
-frontend/electron/
-frontend/build_output/
-frontend/dist_electron/
-frontend/electron/
-frontend/.vite/
-frontend/.env
-admin-frontend/node_modules/
-admin-frontend/dist/
-admin-frontend/.env
-admin-frontend/.dockerignore
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.eslintcache
+# ═══════════════════════════════════════════════════════════════════
+#  🔒 SPECIFIC PROPRIETARY SCRIPTS & SECRETS
+# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════
+#  🔐 SECRETS, KEYS & ENVIRONMENT FILES
+# ═══════════════════════════════════════════════════════════════════
 
-# --- Docker ---
-.docker/
-docker-compose.override.yml
-
-# --- Environment & Variables ---
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.env.local
+backend/.env
+frontend/.env
+admin-frontend/.env
+*.key
+*.pem
+*.cert
+*.p12
+*.pfx
+*.jks
 
-# --- Databases & RAG Data ---
-data/db/
-data/vectors/
-data/uploads/
+
+# ═══════════════════════════════════════════════════════════════════
+#  🗄️ DATABASE FILES, SCHEMAS & MIGRATION SCRIPTS
+# ═══════════════════════════════════════════════════════════════════
+
+# Proprietary database schema and automation scripts
+backend/schema.sql
+backend/fix_db_schema.py
+backend/fix_auth.py
+backend/fix_imports.py
+backend/check_cols.py
+backend/debug_login.py
+backend/migrate_releases.py
+backend/update_json_parsing.py
+backend/verify_imports.py
+
+# Alembic migration history (contains schema evolution logic)
+backend/alembic/
+
+# SQLite database files (local dev)
 *.db
-*.sqlite3
+*.db-shm
+*.db-wal
 
-# --- System ---
+# Redis dump
+dump.rdb
+redis/dump.rdb
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  📊 PROPRIETARY DOCUMENTATION & RESEARCH
+# ═══════════════════════════════════════════════════════════════════
+
+# Internal design documents and architecture notes
+agent-pipe.md
+backend/gemini_models.md
+
+# Presentation deck and documentation PDF
+AI CHATBOT.pptx
+Self-Hosted Generative AI Chatbot Documentation.pdf
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  🧪 TEST SUITES & TEST ARTIFACTS
+# ═══════════════════════════════════════════════════════════════════
+
+# Backend test suite (reveals internal API contract)
+backend/tests/
+backend/test_deep_systems.py
+backend/pytest.ini
+
+# Test output and logs
+backend/test_out.log
+backend/test_out_fast.log
+backend/nvidia_test_output.txt
+
+# Coverage and cache
+.coverage
+.pytest_cache/
+htmlcov/
+backend/.pytest_cache/
+backend/.ruff_cache/
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  🎨 PROPRIETARY BRAND ASSETS
+# ═══════════════════════════════════════════════════════════════════
+
+# High-resolution logos and branding (root-level and static)
+backend/app/static/
+frontend/public/App.png
+frontend/public/app_name.png
+frontend/public/logo.png
+frontend/public/logo_icon.png
+frontend/public/logo_icon_transparent.png
+frontend/app_name.png
+frontend/logo.png
+frontend/logo_icon.png
+admin-frontend/src/logo.png
+admin-frontend/src/logo_icon.png
+frontend/src/assets/
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  📦 DEPENDENCIES & VIRTUAL ENVIRONMENTS
+# ═══════════════════════════════════════════════════════════════════
+
+node_modules/
 backend/venv/
+__pycache__/
+backend/__pycache__/
+backend/app/__pycache__/
+backend/app/**/__pycache__/
+*.pyc
+*.pyo
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  🏗️ BUILD OUTPUT & COMPILED ARTIFACTS
+# ═══════════════════════════════════════════════════════════════════
+
+frontend/dist/
+frontend/dist_electron/
+frontend/build_output/
+frontend/.vite/
+admin-frontend/dist/
+backend/build/
+build_output/
+*.exe
+*.dmg
+*.AppImage
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  💾 DATA VOLUMES & PERSISTENT STORAGE
+# ═══════════════════════════════════════════════════════════════════
+
+# All runtime data — uploads, vector DBs, models, postgres data
+data/
+backend/data/
+backend/uploads/
+
+# Bundled Redis server binaries
+redis/
+redis.zip
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  📝 LOGS & DEBUG OUTPUT
+# ═══════════════════════════════════════════════════════════════════
+
+*.log
+backend/backend_errors.log
+npm-debug.log
+frontend/npm-debug.log
+frontend/asar_contents.txt
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  🖥️ IDE, EDITOR & OS ARTIFACTS
+# ═══════════════════════════════════════════════════════════════════
+
+.idea/
+.vscode/
+backend/.vscode/
+backend/C/
+*.swp
+*.swo
+*~
 .DS_Store
 Thumbs.db
-desktop.ini
-.vscode/
-.idea/
-
-# --- Project Specific ---
-temp/
-tmp/
-logs/
-*.log
-
-# --- Proprietary Source Code (NOT for public distribution) ---
-# Core backend business logic
-backend/app/
-backend/models/
-backend/fix_db_schema.py
-backend/schema.sql
-backend/backend_errors.log
-backend/uploads/
-check_project.py
-
-# Core frontend source
-frontend/src/
-
-# Core admin frontend source
-admin-frontend/src/
-
-
-*.pptx
-*.pdf
-
-# Build Scripts & Documentation
-build_macos.sh
-build_windows.bat
-AI CHATBOT.pptx
-Self-Hosted Generative AI Chatbot Documentation.pdf
-
-# Secrets (Just in case)
-*.pem
-*.cert
-*.key
-secrets.json
-credentials.json
-client_secret.json
- assets
-Logo/
-*.png
-*.mp4
-
-
-# Build Scripts & Documentation
-build_macos.sh
-build_windows.bat
-AI CHATBOT.pptx
-Self-Hosted Generative AI Chatbot Documentation.pdf
-
-# Secrets (Just in case)
-*.pem
-*.cert
-*.key
-secrets.json
-credentials.json
-client_secret.json
