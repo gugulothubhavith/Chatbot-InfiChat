@@ -25,9 +25,9 @@
 </p>
 
 > [!WARNING]
-> **🚧 Currently Under Active Development**
+> **🚧 Active Development Notice**
 >
-> This project is under continuous improvement. Some features may be unstable or temporarily unavailable during upgrade cycles.
+> InfiChat is continuously evolving. We are actively adding new features, optimizing performance, and refining the architecture. Expect frequent updates!
 
 <p align="center">
   A production-grade, self-hosted generative AI platform featuring multi-provider LLM streaming, autonomous multi-agent code execution, professional Indic voice AI (TTS/STT), Retrieval-Augmented Generation (RAG), deep research & thinking engines, an enterprise admin command center, subscription management, and a native desktop application via Electron.
@@ -35,27 +35,20 @@
 
 ---
 
-> [!IMPORTANT]
-> **🔒 Open Core Notice**
+> [!NOTE]
+> **🚀 Complete Platform Access**
 >
-> This repository is **source-available**.
-> The **core business logic** — including backend application code, frontend source, admin dashboard source, and voice AI modules — is included in this repository. 
+> This repository contains the **complete source code** for the InfiChat platform. You have full access to:
 >
-> **What's included in this repo:**
-> - `backend/app/` — All Python source: API routes, services, models, schemas, middleware, core logic, database layer
-> - `frontend/src/` — All React/TypeScript source: components, pages, hooks, context, styles, assets
-> - `admin-frontend/src/` — All admin dashboard source: 25+ command center modules, governance UI
-> - `TTS and STT/` — Complete voice AI agent: TTS/STT engines, response pipeline, voice config
-> - `frontend/electron/` — Electron desktop shell (main process + preload)
-> - `README.md` — Full documentation and architecture reference
-> - `package.json` (root, frontend, admin, backend) — Dependency manifests
-> - `backend/requirements.txt` — Python dependency locks
+> - `backend/app/` — FastAPI core, API routes, models, schemas, and AI services.
+> - `frontend/src/` — React UI, streaming chat, and components.
+> - `admin-frontend/src/` — 25+ command center governance modules.
+> - `TTS and STT/` — Custom voice AI pipelines (TTS/STT).
+> - `frontend/electron/` — Native desktop application shell.
+> - `README.md` — Full documentation and architecture reference.
+> - `package.json` & `requirements.txt` — Complete dependency manifests.
 >
-> **What's NOT included (protected via `.gitignore`):**
-> - `backend/alembic/` — Database migration history and schema evolution
-> - `backend/schema.sql`, `backend/fix_db_schema.py` — Proprietary database automation
-> - `data/`, `redis/` — Runtime data volumes and bundled Redis server
-> - `.env` files and certificates
+> *Note: For security and privacy, local `.env` files, proprietary database automation scripts (`schema.sql`, `fix_db_schema.py`), migration histories (`alembic/`), and user data volumes (`data/`, `redis/`) are intentionally excluded via `.gitignore`.*
 >
 > For licensing, collaboration, or access inquiries, please contact the author directly.
 
