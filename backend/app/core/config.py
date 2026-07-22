@@ -43,8 +43,8 @@ class Settings(BaseSettings):
     def trusted_hosts(self) -> List[str]:
         return [host.strip() for host in self.ALLOWED_HOSTS.split(",") if host.strip()]
     
-    # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://ai:ai_pass@postgres:5432/autoagent")
+    # Database — auto-falls back to SQLite if Docker/PostgreSQL unavailable
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://redis:6379/0")
     
     # Model servers
@@ -70,9 +70,12 @@ class Settings(BaseSettings):
     # OAuth
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
     
+    # Default Chat
+    DEFAULT_CHAT_API_KEY: str = os.getenv("DEFAULT_CHAT_API_KEY", "")
+    DEFAULT_CHAT_MODEL: str = os.getenv("DEFAULT_CHAT_MODEL", "nvidia/nemotron-3-super-120b-a12b")
+    
     # Groq
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
-    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
     
     # Voyage AI
     VOYAGE_API_KEY: Optional[str] = os.getenv("VOYAGE_API_KEY")
@@ -93,13 +96,11 @@ class Settings(BaseSettings):
     UNREAL_SPEECH_API_KEY: Optional[str] = os.getenv("UNREAL_SPEECH_API_KEY")
     UNREAL_SPEECH_VOICE: str = os.getenv("UNREAL_SPEECH_VOICE", "Sierra")
     
-    # Multi-Agent System
+    # Multi-Agent Coding System
     PLANNER_API_KEY: Optional[str] = os.getenv("PLANNER_API_KEY")
-    PLANNER_MODEL: str = os.getenv("PLANNER_MODEL", "llama-3.3-70b-versatile")
+    PLANNER_MODEL: str = os.getenv("PLANNER_MODEL", "z-ai/glm-5.2")
     CODER_API_KEY: Optional[str] = os.getenv("CODER_API_KEY")
-    CODER_MODEL: str = os.getenv("CODER_MODEL", "bigcode/starcoder2-7b")
-    REVIEWER_API_KEY: Optional[str] = os.getenv("REVIEWER_API_KEY")
-    REVIEWER_MODEL: str = os.getenv("REVIEWER_MODEL", "bigcode/starcoder2-7b")
+    CODER_MODEL: str = os.getenv("CODER_MODEL", "z-ai/glm-5.2")
     
     # Email SMTP
     SMTP_SERVER: str = "smtp.gmail.com"
@@ -107,4 +108,4 @@ class Settings(BaseSettings):
     SMTP_USER: str = os.getenv("SMTP_USER", "aichatbotclgproject@gmail.com")
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "CHANGE_ME")
 
-settings = Settings()
+settings = Settings()

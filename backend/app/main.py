@@ -1,0 +1,411 @@
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
+from app.core.config import settings
+from datetime import datetime, timezone
+from slowapi.errors import RateLimitExceeded
+
+# CRITICAL: Import all models immediately to register them with SQLAlchemy/Base
+from app import models 
+
+import logging
+import traceback as tb_module
+
+# --- Sensitive Data Masking (Logging) ---
+class RedactingFilter(logging.Filter):
+    """Masks sensitive keys in logs (password, token, secret, key)"""
+    def filter(self, record):
+        msg = str(record.msg)
+        sensitive_keys = ["password", "token", "secret", "key", "authorization", "cookie"]
+        for key in sensitive_keys:
+            # Simple case-insensitive redact for key-value looking strings
+            import re
+            msg = re.sub(rf'("{key}"\s*:\s*")([^"]+)"', rf'\1[REDACTED]"', msg, flags=re.IGNORECASE)
+            msg = re.sub(rf'({key}=)([^&\s]+)', rf'\1[REDACTED]', msg, flags=re.IGNORECASE)
+        record.msg = msg
+        return True
+
+logger = logging.getLogger(__name__)
+# Apply the filter to all relevant loggers (including uvicorn)
+for logger_name in [None, "uvicorn", "uvicorn.access", "uvicorn.error", "app.main", "app.services.rag_service"]:
+    l = logging.getLogger(logger_name)
+    l.addFilter(RedactingFilter())
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("Starting up AI Platform Backend...")
+    logger.info(f"Project Name: {settings.PROJECT_NAME}")
+    logger.info(f"Groq API Key set: {'Yes' if settings.GROQ_API_KEY else 'No'}")
+    
+    from app.database.db import init_db
+    from app.services import voice_service
+    try:
+        await init_db()
+        logger.info("Database initialized successfully.")
+        
+        # Pre-load STT and TTS models for zero-latency first use
+        logger.info("Pre-loading neural models (Whisper & Kokoro)...")
+        voice_service.preload_models()
+        logger.info("Models pre-loaded.")
+
+        # Seed default subscription plans
+        logger.info("Seeding subscription plans...")
+        from app.services.seed_plans import seed_plans
+        seed_plans()
+        logger.info("Subscription plans seeded.")
+
+        # Seed default admin user (only if no admin exists)
+        logger.info("Seeding default admin user...")
+        from app.services.seed_admin import seed_admin
+        seed_admin()
+        logger.info("Admin seeding check complete.")
+        logger.info("")
+        logger.info("╔══════════════════════════════════════════════════════╗")
+        logger.info("║            ADMIN PANEL CREDENTIALS                  ║")
+        logger.info("╠══════════════════════════════════════════════════════╣")
+        logger.info("║  Email:    gugulothubhavith2006@gmail.com          ║")
+        logger.info("║  Password: Gbhavith@2005                           ║")
+        logger.info("║  URL:      http://localhost:5174                    ║")
+        logger.info("╚══════════════════════════════════════════════════════╝")
+        logger.info("")
+
+        # Automatically run schema fixes
+        logger.info("Running automated schema fixes...")
+        # from fix_db_schema import fix_schema
+        # fix_schema()
+    except Exception as e:
+        logger.error(f"DATABASE ERROR ON STARTUP: {e}")
+
+    # Auto-download spaCy model for Deep Research NER (if not already present)
+    try:
+        import spacy
+        try:
+            spacy.load("en_core_web_sm")
+            logger.info("spaCy model en_core_web_sm already available.")
+        except OSError:
+            logger.info("Downloading spaCy en_core_web_sm model...")
+            from spacy.cli import download
+            download("en_core_web_sm")
+            logger.info("spaCy model downloaded successfully.")
+    except ImportError:
+        logger.warning("spaCy not installed — Deep Research NER will be limited.")
+    except Exception as e:
+        logger.warning(f"spaCy setup failed (non-critical): {e}")
+
+    yield
+
+    # Shutdown
+    print("Shutting down...")
+
+
+tags_metadata = [
+    {
+        "name": "Auth",
+        "description": "🔐 User registration, login (Password + OTP), JWT token management.",
+    },
+    {
+        "name": "OAuth",
+        "description": "🌐 Google OAuth 2.0 single sign-on integration.",
+    },
+    {
+        "name": "Chat",
+        "description": "💬 AI Chat sessions, streaming responses, conversation history, session management, sharing, and archiving.",
+    },
+    {
+        "name": "Voice",
+        "description": "🎙️ Professional Indic TTS engine (Edge-TTS): English, Hindi, Telugu voices. Speech-to-Text transcription via Whisper.",
+    },
+    {
+        "name": "RAG",
+        "description": "📚 Retrieval-Augmented Generation — upload documents (PDF, DOCX, TXT) to your personal Knowledge Base for context-aware responses.",
+    },
+    {
+        "name": "Code Agent",
+        "description": "🤖 Sandboxed Python code execution agent with real-time output streaming.",
+    },
+    {
+        "name": "Image",
+        "description": "🖼️ AI Image generation using Stable Diffusion XL.",
+    },
+    {
+        "name": "Snippets",
+        "description": "📝 Save, list, and delete reusable code or text snippets.",
+    },
+    {
+        "name": "Settings",
+        "description": "⚙️ User preferences: theme, voice, personalization, model config, notification channels.",
+    },
+    {
+        "name": "Admin",
+        "description": "🛡️ Admin-only controls: PII scrubbing toggle, privacy settings.",
+    },
+    {
+        "name": "WebSocket",
+        "description": "🔌 Real-time WebSocket endpoints for the Code Agent and AI Agent.",
+    },
+    {
+        "name": "Deep Research",
+        "description": "🔬 11-Agent deep research pipeline with real-time progress streaming.",
+    },
+]
+
+app = FastAPI(
+    title="InfiChat",
+    description=(
+        "## Backend API\n\n"
+        "A fully self-hosted, multi-modal AI platform with:\n"
+        "- **Streaming Chat** powered by Groq, Gemini, and OpenRouter\n"
+        "- **Professional Indic TTS** — English, Hindi, Telugu voices\n"
+        "- **Whisper STT** — speech-to-text transcription\n"
+        "- **RAG** — personal Knowledge Base from uploaded documents\n"
+        "- **Sandboxed Code Execution** — safe Python runner\n"
+        "- **Google OAuth** + Password + OTP authentication\n\n"
+        "All data is stored locally. No cloud required."
+    ),
+    version="2.0.0",
+    contact={
+        "name": "InfiChat",
+    },
+    openapi_tags=tags_metadata,
+    docs_url=None,           # Overridden below with custom CSS injection
+    openapi_url="/openapi.json",
+    lifespan=lifespan
+)
+
+# Serve logo from /static
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# Custom /docs — hides /openapi.json link and shows logo instead of InfiChat title
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui() -> HTMLResponse:
+    html = get_swagger_ui_html(
+        openapi_url="/openapi.json",
+        title="API Docs",
+        swagger_favicon_url="/static/logo.png",
+    )
+    body = html.body.decode()
+    custom_css = """
+    <style>
+      /* Hide the InfiChat title text and /openapi.json link */
+      .swagger-ui .info .title,
+      .swagger-ui .info a { display: none !important; }
+      /* Show logo above the description */
+      .swagger-ui .info::before {
+        content: '';
+        display: block;
+        background-image: url('/static/logo.png');
+        background-repeat: no-repeat;
+        background-size: contain;
+        width: 180px;
+        height: 70px;
+        margin-bottom: 16px;
+      }
+    </style>
+    """
+    body = body.replace("</head>", custom_css + "</head>")
+    return HTMLResponse(content=body, status_code=200)
+
+# --- Security Middleware Stack (order matters: last added = first executed) ---
+
+# 0. Admin Audit Middleware — Automated logging of all admin actions
+from app.middleware.audit_logging import AdminAuditMiddleware
+app.add_middleware(AdminAuditMiddleware)
+
+# 1. CORS Middleware — restrict to configured origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+    expose_headers=["X-Request-ID"],
+    max_age=600,  # Cache preflight for 10 minutes
+)
+
+# 2. Trusted Host Middleware
+if settings.ENVIRONMENT != "test":
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=settings.trusted_hosts
+    )
+
+# 3. Security Headers Middleware (X-Frame-Options, CSP, HSTS, etc.)
+from app.core.security import SecurityHeadersMiddleware
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 4. Input Sanitization Middleware (XSS, SQL injection, payload size)
+from app.middleware.input_sanitizer import InputSanitizationMiddleware
+app.add_middleware(InputSanitizationMiddleware)
+
+# 5. Tenant Isolation Middleware
+from app.middleware.tenant import TenantIsolationMiddleware
+app.add_middleware(TenantIsolationMiddleware)
+
+# 6. Advanced Infrastructure IP Firewall & Cloudflare Origin Shield (DDoS Mitigation)
+from app.middleware.firewall import InfrastructureFirewallMiddleware
+app.add_middleware(InfrastructureFirewallMiddleware)
+
+# 7. Usage Tracking Middleware — subscription/enforcement
+from app.middleware.usage_tracker import UsageTrackingMiddleware
+app.add_middleware(UsageTrackingMiddleware)
+
+# 8. CSRF Protection Middleware
+from app.middleware.csrf import CSRFProtectionMiddleware
+app.add_middleware(CSRFProtectionMiddleware)
+
+# 9. Rate Limiter
+from app.core.security import limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, lambda r, e: JSONResponse(status_code=429, content={"detail": "Too many requests. Please slow down."}))
+
+# 10. Pydantic Validation Error Handler — Hide internal field names in production
+from fastapi.exceptions import RequestValidationError
+import uuid as uuid_module
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    if settings.is_production:
+        error_id = str(uuid_module.uuid4())[:8]
+        logger.warning(f"Validation error [{error_id}]: {exc}")
+        return JSONResponse(
+            status_code=422,
+            content={"detail": f"Invalid request data. Reference: {error_id}"}
+        )
+    else:
+        return JSONResponse(
+            status_code=422,
+            content={"detail": exc.errors()}
+        )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    error_id = str(uuid_module.uuid4())[:8]
+    error_trace = tb_module.format_exc()
+    error_msg = f"GLOBAL ERROR [{error_id}]: {exc}\n{error_trace}"
+    logger.error(error_msg)
+    
+    # Log to file for debugging
+    try:
+        with open("backend_errors.log", "a") as f:
+            f.write(f"\n{'='*40}\n")
+            f.write(f"TIMESTAMP: {datetime.now(timezone.utc)}\n")
+            f.write(f"URL: {request.url}\n")
+            f.write(error_msg)
+            f.write(f"\n{'='*40}\n")
+    except Exception:
+        pass
+
+    # SECURITY: Never expose tracebacks or internal details to clients in production
+    if settings.is_production:
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "An internal server error occurred. Please try again later.", "reference": error_id}
+        )
+    else:
+        # Development mode — show details for debugging
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(exc), "traceback": error_trace}
+        )
+
+
+@app.get("/health", tags=["Health"])
+@limiter.limit("20/minute")
+async def health(request: Request):
+    from app.database.db import check_db_connection
+    from app.core.redis_client import redis_client
+    
+    db_ok = await check_db_connection()
+    
+    redis_ok = False
+    try:
+        redis_ok = redis_client.ping()
+    except Exception:
+        pass
+        
+    status = "ok" if (db_ok and redis_ok) else "degraded"
+    
+    return {
+        "status": status,
+        "database": "connected" if db_ok else "disconnected",
+        "redis": "connected" if redis_ok else "disconnected",
+        "timestamp": datetime.now(timezone.utc)
+    }
+
+
+from app.api import auth, chat, code_agent, rag, image, admin, ws_code, ws_agent, voice, snippets, settings as settings_api, admin_governance, admin_security, admin_zero_trust, metrics, organizations, proxy, ws_broadcast, system, research, thinking, subscriptions
+
+# --- API v1 Router Registration (versioned endpoints) ---
+# All REST API routes are prefixed with /api/v1 for professional versioning
+API_V1_PREFIX = "/api/v1"
+
+app.include_router(auth.router, prefix=API_V1_PREFIX)
+app.include_router(chat.router, prefix=API_V1_PREFIX)
+app.include_router(rag.router, prefix=API_V1_PREFIX)
+app.include_router(code_agent.router, prefix=API_V1_PREFIX)
+app.include_router(image.router, prefix=API_V1_PREFIX)
+app.include_router(voice.router, prefix=API_V1_PREFIX)
+app.include_router(snippets.router, prefix=API_V1_PREFIX)
+app.include_router(settings_api.router, prefix=API_V1_PREFIX)
+app.include_router(proxy.router, prefix=API_V1_PREFIX)
+app.include_router(research.router, prefix=API_V1_PREFIX)
+app.include_router(thinking.router, prefix=API_V1_PREFIX)
+app.include_router(subscriptions.router, prefix=API_V1_PREFIX)
+
+# Admin & Security routes (versioned)
+app.include_router(admin.router, prefix=API_V1_PREFIX)
+app.include_router(admin_governance.router, prefix=API_V1_PREFIX)
+app.include_router(admin_security.router, prefix=API_V1_PREFIX)
+app.include_router(admin_zero_trust.router, prefix=API_V1_PREFIX)
+app.include_router(metrics.router, prefix=API_V1_PREFIX)
+app.include_router(organizations.router, prefix=API_V1_PREFIX)
+app.include_router(system.router, prefix=API_V1_PREFIX)
+
+# --- Backward-Compatible Legacy Routes (no prefix) ---
+# These ensure the existing frontend works seamlessly during transition
+app.include_router(auth.router)
+app.include_router(chat.router)
+app.include_router(admin.router)
+app.include_router(admin_governance.router)
+app.include_router(admin_security.router)
+app.include_router(admin_zero_trust.router)
+app.include_router(metrics.router)
+app.include_router(organizations.router)
+app.include_router(rag.router)
+app.include_router(code_agent.router)
+app.include_router(image.router)
+app.include_router(voice.router)
+app.include_router(snippets.router)
+app.include_router(settings_api.router)
+app.include_router(proxy.router)
+app.include_router(research.router)
+app.include_router(thinking.router)
+app.include_router(subscriptions.router)
+app.include_router(system.router)
+
+# WebSocket routes stay at root (WS connections don't use versioned paths)
+app.include_router(ws_code.router)
+app.include_router(ws_agent.router)
+app.include_router(ws_broadcast.router)
+
+
+@app.get("/", tags=["Health"])
+async def root():
+    return {
+        "message": "InfiChat Backend API is running",
+        "docs_url": "/docs",
+        "health_url": "/health",
+        "version": "2.0.0"
+    }
+
+if __name__ == "__main__": 
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+# reload
+
+# reload

@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_db
+from sqlalchemy.orm import Session
 from app.models.user import User
+from app.models.chat import ChatMessage, ChatSession
 from app.core.config import settings
 import httpx
 import base64
@@ -21,6 +24,7 @@ class ImageGenerateRequest(BaseModel):
     negative_prompt: str = ""
     width: int = 512
     height: int = 512
+    session_id: str | None = None
 
 
 def _make_placeholder_image(prompt: str, width: int, height: int, reason: str) -> str:
@@ -46,7 +50,8 @@ def _make_placeholder_image(prompt: str, width: int, height: int, reason: str) -
 async def image_generate(
     request: Request,
     payload: ImageGenerateRequest,
-    user: User = Depends(get_current_user)
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Generate image using Hugging Face Inference API with PIL placeholder fallback."""
     logger.info(f"Image generation request from {user.username}: {payload.prompt}")
@@ -99,11 +104,51 @@ async def image_generate(
         logger.warning(f"Image APIs total failure: {e}")
 
     if image_base64:
-        return {
-            "image_url": f"data:image/jpeg;base64,{image_base64}",
-            "prompt": payload.prompt,
-            "model": model_used,
-        }
+        image_url = f"data:image/jpeg;base64,{image_base64}"
+        
+        session_id = payload.session_id
+        if not session_id:
+            import uuid
+            new_session = ChatSession(
+                id=str(uuid.uuid4()),
+                user_id=user.id,
+                title=payload.prompt[:50]
+            )
+            db.add(new_session)
+            session_id = new_session.id
+            
+        try:
+            # User prompt
+            user_msg = ChatMessage(
+                session_id=session_id,
+                role="user",
+                content=payload.prompt
+            )
+            db.add(user_msg)
+            
+            # Assistant image response
+            asst_msg = ChatMessage(
+                session_id=session_id,
+                role="assistant",
+                content="Here is your generated image:",
+                image=image_url,
+                model=model_used
+            )
+            db.add(asst_msg)
+            db.commit()
+        except Exception as e:
+            logger.error(f"Failed to save image to chat history: {e}")
+            db.rollback()
+
+        return JSONResponse(
+            content={
+                "image_url": image_url,
+                "prompt": payload.prompt,
+                "model": model_used,
+                "session_id": session_id
+            },
+            headers={"X-Chat-Session-ID": str(session_id)}
+        )
 
     # Fallback placeholder — never crash the frontend
     img_b64 = _make_placeholder_image(
