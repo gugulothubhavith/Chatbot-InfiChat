@@ -51,21 +51,17 @@
 > [!WARNING]
 > **🚧 Active Development** — InfiChat is continuously evolving with new features, performance optimizations, and architectural refinements. Expect frequent updates and improvements.
 
-> [!NOTE]
-> **📂 Open Source — Full Codebase Access**
->
-> This repository contains the **complete, unredacted source code** for the InfiChat platform — **408+ source files** across 4 application layers:
->
-> | Layer | Path | Contents |
-> |:------|:-----|:---------|
-> | **Backend Intelligence** | `backend/app/` | FastAPI core, 24 API routes, 19 services, 24 ORM models, 8 schemas |
-> | **User Interface** | `frontend/src/` | React 18, streaming chat, 14 components, 9 pages, 5 custom hooks |
-> | **Admin Command Center** | `admin-frontend/src/` | 25 enterprise governance modules, 3D visualizations |
-> | **Voice AI Agent** | `TTS and STT/` | Standalone Indic voice pipeline (TTS + STT) |
-> | **Desktop Shell** | `frontend/electron/` | Electron 41 native application |
-> | **CI/CD** | `.github/workflows/` | Automated testing + build pipeline |
->
-> *For security, `.env` files, database migration histories, and runtime data volumes are excluded via `.gitignore`.*
+> [!CAUTION]
+> **🔒 PROPRIETARY INTELLECTUAL PROPERTY NOTICE**
+> 
+> While InfiChat provides extensive access to its foundational architecture, certain **Core AI Services and Proprietary UI Logic** are strictly classified and intentionally omitted from this public repository.
+> 
+> **Restricted Modules Include:**
+> - **Core AI Engines:** Deep Research, Chain-of-Thought Reasoning (Deep Thinking), Agentic Web Search, and Multi-Agent Code Orchestration.
+> - **Proprietary Frontend Components:** Advanced pipeline visualizations and real-time streaming interfaces (`CodeAgent`, `DeepResearchProgress`, `ai-agent-pipeline`, etc.).
+> - **Internal Operations:** Migration utilities, debug tooling, and private environment configurations.
+> 
+> These exclusions guarantee the protection of proprietary algorithms and enterprise trade secrets while maintaining a robust, deployable open-core foundation.
 
 ---
 
