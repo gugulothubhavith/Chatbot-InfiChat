@@ -36,7 +36,7 @@
 <p>
   <a href="#-quick-start">⚡ Quick Start</a> •
   <a href="#-feature-atlas">✨ Features</a> •
-  <a href="#-system-architecture">🏗️ Architecture</a> •
+  <a href="ARCHITECTURE.md">🏗️ Architecture</a> •
   <a href="#-api-reference">📡 API</a> •
   <a href="#-deployment-guide">🚀 Deploy</a> •
   <a href="#-contributing">🤝 Contribute</a>
