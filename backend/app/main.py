@@ -338,7 +338,7 @@ async def health(request: Request):
     }
 
 
-from app.api import auth, chat, code_agent, rag, image, admin, ws_code, ws_agent, voice, snippets, settings as settings_api, admin_governance, admin_security, admin_zero_trust, metrics, organizations, proxy, ws_broadcast, system, research, thinking, subscriptions
+from app.api import auth, chat, code_agent, rag, image, admin, ws_code, ws_agent, voice, snippets, settings as settings_api, admin_governance, admin_security, admin_zero_trust, metrics, organizations, proxy, ws_broadcast, system, research, thinking, subscriptions, web_search
 
 # --- API v1 Router Registration (versioned endpoints) ---
 # All REST API routes are prefixed with /api/v1 for professional versioning
@@ -356,6 +356,7 @@ app.include_router(proxy.router, prefix=API_V1_PREFIX)
 app.include_router(research.router, prefix=API_V1_PREFIX)
 app.include_router(thinking.router, prefix=API_V1_PREFIX)
 app.include_router(subscriptions.router, prefix=API_V1_PREFIX)
+app.include_router(web_search.router, prefix=API_V1_PREFIX)
 
 # Admin & Security routes (versioned)
 app.include_router(admin.router, prefix=API_V1_PREFIX)
@@ -387,6 +388,7 @@ app.include_router(research.router)
 app.include_router(thinking.router)
 app.include_router(subscriptions.router)
 app.include_router(system.router)
+app.include_router(web_search.router)
 
 # WebSocket routes stay at root (WS connections don't use versioned paths)
 app.include_router(ws_code.router)

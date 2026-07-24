@@ -151,6 +151,49 @@ async def process_chat(payload: ChatRequest, user: User, db: Session, background
     # 7. Memory & System Prompt Injection
     system_messages = []
     
+    # 7.5 Auto-Trigger Web Search
+    if not attached_file and payload.model != "research_agent":
+        from app.services.llm_router import call_llm
+        from app.core.config import settings
+        
+        intent_prompt = f"Does the following query absolutely require a real-time web search to answer accurately (e.g. current news, weather, recent events, live prices)? Reply ONLY with 'YES' or 'NO'.\nQuery: {last_msg.content}"
+        try:
+            intent_payload = {
+                "model": settings.DEFAULT_CHAT_MODEL,
+                "messages": [{"role": "user", "content": intent_prompt}],
+                "temperature": 0.1,
+                "max_tokens": 200
+            }
+            intent_res = await call_llm("chat", intent_payload, stream=False)
+            intent_answer = intent_res.get("choices", [{}])[0].get("message", {}).get("content", "").strip().upper()
+            logger.info(f"Intent answer for '{last_msg.content}': {intent_answer}")
+            
+            if "YES" in intent_answer:
+                logger.info(f"Auto-Triggering Web Search for query: {last_msg.content}")
+                from app.services.web_search.orchestrator import run_web_search
+                
+                search_report = ""
+                async for event in run_web_search(last_msg.content, model=settings.DEFAULT_CHAT_MODEL):
+                    if event.startswith("data: "):
+                        data_str = event[6:].strip()
+                        if data_str:
+                            try:
+                                data = json.loads(data_str)
+                                if data.get("type") == "report":
+                                    report_content = data.get("content", "")
+                                    citations = data.get("citations", [])
+                                    if citations:
+                                        cit_str = "\n".join([f"[{c.get('index')}] [{c.get('title')}]({c.get('url')})" for c in citations])
+                                        report_content += "\n\n---\n**Sources:**\n" + cit_str
+                                    search_report = report_content
+                            except Exception:
+                                pass
+                
+                if search_report:
+                    system_messages.append(f"Web Search Results (Real-time data):\n{search_report}\n\nUse this information to accurately answer the user's query.")
+        except Exception as e:
+            logger.warning(f"Auto-Trigger Web Search failed: {e}")
+
     # User Custom System Prompt
     if payload.system_prompt:
         system_messages.append(f"Custom Instruction:\n{payload.system_prompt}")

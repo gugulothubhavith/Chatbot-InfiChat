@@ -16,6 +16,7 @@ interface ChatInputProps {
   input: string;
   setInput: (val: string) => void;
   loading: boolean;
+  isWebSearch: boolean;
   isDeepResearch: boolean;
   isDeepThinking: boolean;
   isImageGen: boolean;
@@ -28,6 +29,7 @@ interface ChatInputProps {
   isRecording: boolean;
   onSend: (config?: any) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
+  onToggleWebSearch: () => void;
   onToggleResearch: () => void;
   onToggleThinking: () => void;
   onToggleImageGen: () => void;
@@ -58,9 +60,23 @@ function DocumentCard({ name, type, isUser }: { name: string; type: string; isUs
 }
 
 export function ChatInput({
-  input, setInput, loading, isDeepResearch, isDeepThinking, isImageGen, useRag,
-  selectedImage, selectedFile, selectedModel, showModelDropdown, showToolsMenu, isRecording,
-  onSend, onKeyDown, onToggleResearch, onToggleThinking, onToggleImageGen, onToggleRag,
+  input, setInput, loading,
+  isWebSearch,
+  isDeepResearch,
+  isDeepThinking,
+  isImageGen,
+  useRag,
+  selectedImage,
+  selectedFile,
+  selectedModel,
+  showModelDropdown,
+  showToolsMenu,
+  isRecording,
+  onSend,
+  onKeyDown,
+  onToggleWebSearch,
+  onToggleResearch,
+  onToggleThinking, onToggleImageGen, onToggleRag,
   onToggleModelDropdown, onToggleToolsMenu, onToggleRecording, onSelectModel,
   onRemoveImage, onRemoveFile, onFileSelected, setShowToolsMenu, setShowModelDropdown,
 }: ChatInputProps) {
@@ -122,14 +138,15 @@ export function ChatInput({
               background: "color-mix(in srgb, var(--color-surface) 85%, transparent)",
               backdropFilter: "blur(24px)",
               WebkitBackdropFilter: "blur(24px)",
-              border: `1.5px solid ${isDeepResearch || isDeepThinking || isImageGen || useRag ? "transparent" : "var(--color-border)"}`,
+              border: `1.5px solid ${isWebSearch || isDeepResearch || isDeepThinking || isImageGen || useRag ? "transparent" : "var(--color-border)"}`,
               boxShadow: activeModeShadow 
             }}>
 
               {/* Mode Indicators */}
               <AnimatePresence>
-                {(isDeepResearch || isDeepThinking || useRag || isImageGen) && (
+                {(isWebSearch || isDeepResearch || isDeepThinking || useRag || isImageGen) && (
                   <m.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="flex items-center gap-2 px-4 pt-2.5 overflow-hidden">
+                    {isWebSearch && <ModeChip icon={Globe} label="Web Search" color="oklch(0.600 0.200 250)" onClose={onToggleWebSearch} />}
                     {isDeepResearch && <ModeChip icon={Globe} label="Deep Research" color="oklch(0.600 0.200 300)" onClose={onToggleResearch} />}
                     {isDeepThinking && <ModeChip icon={Brain} label="Deep Thinking" color="oklch(0.600 0.200 150)" onClose={onToggleThinking} />}
                     {isImageGen && <ModeChip icon={Image} label="Image Generation" color="oklch(0.650 0.250 15)" onClose={onToggleImageGen} />}
@@ -171,6 +188,7 @@ export function ChatInput({
                             className="absolute bottom-full left-0 mb-2 w-72 rounded-2xl z-50 py-2 glass-heavy"
                             style={{ border: "1px solid var(--color-border)", boxShadow: "var(--shadow-xl)" }}>
                             <div className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-tertiary)" }}>Tools</div>
+                            <ToolItem icon={Globe} label="Web Search" desc="Live agentic web search" active={isWebSearch} onClick={() => { onToggleWebSearch(); setShowToolsMenu(false); }} />
                             <ToolItem icon={Globe} label="Deep Research" desc="Multi-agent web research" active={isDeepResearch} onClick={() => { onToggleResearch(); setShowToolsMenu(false); }} />
                             <ToolItem icon={Brain} label="Deep Thinking" desc="Chain-of-thought reasoning" active={isDeepThinking} onClick={() => { onToggleThinking(); setShowToolsMenu(false); }} />
                             <ToolItem icon={Image} label="Create Image" desc="Generate images inline" active={isImageGen} onClick={() => { onToggleImageGen(); setShowToolsMenu(false); }} />

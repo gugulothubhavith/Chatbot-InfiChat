@@ -79,14 +79,14 @@
   - [💬 Multi-Provider Streaming Chat](#-multi-provider-streaming-chat)
   - [🎙️ Professional Indic Voice AI](#%EF%B8%8F-professional-indic-voice-ai-tts--stt)
   - [📚 RAG — Retrieval-Augmented Generation](#-rag--retrieval-augmented-generation)
-  - [🤖 Multi-Agent Sandboxed Code Execution](#-multi-agent-sandboxed-code-execution)
+  - [🤖 InfiBuild Studio (5-Agent Code Generation)](#-infibuild-studio-5-agent-code-generation)
   - [🧠 Deep Research & Thinking Engines](#-deep-research--thinking-engines)
   - [🔐 Authentication & Security](#-authentication--security)
   - [🎛️ Enterprise Admin Command Center](#%EF%B8%8F-enterprise-admin-command-center)
   - [💳 Subscription & Monetization Engine](#-subscription--monetization-engine)
   - [🖼️ AI Image Generation](#%EF%B8%8F-ai-image-generation)
   - [🖥️ Desktop Application](#%EF%B8%8F-desktop-application-electron)
-- [🏗️ System Architecture](#%EF%B8%8F-system-architecture)
+- [🏗️ System Architecture & Reference](ARCHITECTURE.md)
 - [🛠️ Technology Stack](#%EF%B8%8F-technology-stack)
 - [📋 Prerequisites](#-prerequisites)
 - [⚡ Quick Start](#-quick-start)
@@ -96,11 +96,6 @@
 - [📡 API Reference](#-api-reference)
 - [🔐 Defense-in-Depth Security Model](#-defense-in-depth-security-model)
 - [🚀 Deployment Guide](#-deployment-guide)
-- [🎙️ Voice System Technical Reference](#%EF%B8%8F-voice-system-technical-reference)
-- [📚 RAG Pipeline Technical Reference](#-rag-pipeline-technical-reference)
-- [🤖 Code Agent Technical Reference](#-code-agent-technical-reference)
-- [🧠 Cognitive Engines Technical Reference](#-cognitive-engines-technical-reference)
-- [🎛️ Admin Command Center Reference](#%EF%B8%8F-admin-command-center-module-reference)
 - [🐛 Troubleshooting Guide](#-troubleshooting-guide)
 - [📊 Performance Benchmarks](#-performance-benchmarks)
 - [🗺️ Roadmap](#%EF%B8%8F-roadmap)
@@ -134,7 +129,7 @@ Instead of fragmenting your workflow across ChatGPT, Claude, Gemini, and special
 | Capability | Standard Chatbots | **InfiChat** |
 |:---|:---:|:---:|
 | Multi-Provider Dynamic LLM Routing (Groq, Gemini, OpenRouter, Ollama) | ❌ | ✅ |
-| Autonomous Multi-Agent Code Execution (Plan → Code → Review → Execute) | ❌ | ✅ |
+| InfiBuild Studio (5-Agent Autonomous Code Generation) | ❌ | ✅ |
 | Deep Research & Extended Thinking Modes | ❌ | ✅ |
 | Professional Indic Voice AI (TTS + STT, 4 neural voices) | ❌ | ✅ |
 | RAG with Local Vector Embeddings (ChromaDB + FAISS) | ❌ | ✅ |
@@ -159,7 +154,7 @@ InfiChat's **Smart Router** (`llm_router.py` — 20,630 bytes of routing intelli
 | Provider | Model | Speed | Primary Use Case |
 |:---|:---|:---:|:---|
 | **Groq** | Llama 3.3 70B Versatile | ~300 tok/s | General chat, summarization, reasoning |
-| **NVIDIA NIM** | StarCoder2 7B / GLM 5.2 | Ultra-fast | Autonomous multi-agent code generation |
+| **NVIDIA NIM** | StarCoder2 7B / GLM 5.2 | Ultra-fast | InfiBuild Studio autonomous coding |
 | **Google Gemini** | Flash 2.0 | Ultra-fast | Vision, multimodal, long-context documents |
 | **OpenRouter** | DeepSeek V3, Claude 3.5, 100+ models | Varies | Specialized cognitive tasks |
 | **Ollama** | Any local model (Mistral, Phi, etc.) | Hardware-dependent | 100% offline private inference |
@@ -427,249 +422,8 @@ npm run build:linux    # Linux (.AppImage)
 
 ## 🏗️ System Architecture
 
-### High-Level Architecture Diagram
-
-```mermaid
-graph TD
-    User["👤 User (Browser / Electron Desktop)"]
-
-    subgraph "🖥️ Frontend Layer"
-        UI["Main UI<br/>(React 18 + TypeScript + Tailwind)<br/>Port 5173"]
-        AdminUI["Admin Command Center<br/>(React 18 + Three.js + Recharts)<br/>Port 5174"]
-        Desktop["Electron Desktop Shell<br/>(v41 + Secure Preload)"]
-    end
-
-    subgraph "🔒 API Gateway (FastAPI)"
-        API["FastAPI Backend<br/>(Uvicorn ASGI • Port 8080)"]
-        RL["SlowAPI Rate Limiter"]
-        JWT["JWT Auth + RBAC Middleware"]
-        CSRF["CSRF Protection"]
-        Sanitizer["Input Sanitizer (XSS)"]
-        AuditLog["Audit Logger"]
-        Firewall["AI Firewall"]
-        UsageTracker["Usage Tracker"]
-        Tenant["Tenant Middleware"]
-    end
-
-    subgraph "🧠 AI Orchestration Layer"
-        Router{"Smart LLM Router<br/>(llm_router.py)"}
-        LLM["☁️ Cloud LLM Providers<br/>(Groq / Gemini / OpenRouter)"]
-        Ollama["🏠 Ollama<br/>(Local Models)"]
-        NVIDIA["🟢 NVIDIA NIM<br/>(Multi-Agent Code Pipeline)"]
-        TTS["🎙️ TTS Engine<br/>(Edge-TTS + Indic Voice)"]
-        STT["🗣️ STT Engine<br/>(Faster Whisper, Offline)"]
-        RAG["📚 RAG Pipeline<br/>(Sentence Transformers)"]
-        Sandbox["💻 Code Sandbox<br/>(Local Subprocess)"]
-        ImgGen["🖼️ Image Generation<br/>(Pollinations / SDXL)"]
-        Research["🔬 Deep Research<br/>(DuckDuckGo + Arxiv + NLP)"]
-        Thinking["🤔 Deep Thinking<br/>(Extended Chain-of-Thought)"]
-        AIFirewall["🛡️ AI Safety Firewall"]
-        Memory["🧩 Memory Service"]
-        Privacy["🔏 Privacy Service (PII)"]
-    end
-
-    subgraph "💾 Persistent Storage Layer"
-        PG[("🐘 PostgreSQL 16<br/>(Users, Chats, Plans, Orgs)")]
-        VDB[("🔵 ChromaDB / FAISS<br/>(Vector Embeddings)")]
-        Cache[("⚡ Redis 7<br/>(Sessions, Cache, Pub/Sub)")]
-        Files["📁 File Storage<br/>(Uploads, Audio, Voices)"]
-    end
-
-    subgraph "🔑 Auth Providers"
-        Google["🔵 Google OAuth 2.0"]
-        OTP["📧 Email OTP (2FA)"]
-    end
-
-    User --> UI
-    User --> AdminUI
-    User --> Desktop
-    Desktop --> UI
-    UI <-->|"HTTP / SSE / WebSocket"| API
-    AdminUI <-->|"HTTP / REST API"| API
-    API --> RL --> JWT --> CSRF --> Sanitizer
-    Sanitizer --> AuditLog --> Firewall --> UsageTracker --> Tenant --> Router
-    Router --> LLM
-    Router --> Ollama
-    Router --> NVIDIA
-    Router --> TTS
-    Router --> STT
-    Router --> RAG
-    Router --> Sandbox
-    Router --> ImgGen
-    Router --> Research
-    Router --> Thinking
-    Router --> AIFirewall
-    Router --> Memory
-    Router --> Privacy
-    API --> PG
-    API --> VDB
-    API --> Cache
-    API --> Files
-    API --> Google
-    API --> OTP
-```
-
-### Request Lifecycle — Chat Message Flow
-
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                        CHAT REQUEST LIFECYCLE                           │
-├──────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  1. User types message in React UI                                      │
-│     │                                                                   │
-│  2. React sends POST /api/chat/stream with JWT token                    │
-│     │                                                                   │
-│  3. FastAPI middleware pipeline:                                         │
-│     │  Rate Limit → JWT Verify → CSRF Check → Input Sanitize            │
-│     │  → Audit Log → AI Firewall → Usage Track → Tenant Isolate         │
-│     │                                                                   │
-│  4. Smart Router determines task type:                                   │
-│     │                                                                   │
-│     ├── 🔬 Deep Research?                                                │
-│     │   └→ DuckDuckGo + Arxiv → NLP synthesis → stream results          │
-│     │                                                                   │
-│     ├── 🤔 Deep Thinking?                                                │
-│     │   └→ Extended chain-of-thought → stream thinking steps             │
-│     │                                                                   │
-│     ├── 📚 RAG enabled?                                                  │
-│     │   └→ ChromaDB/FAISS similarity search → inject context             │
-│     │                                                                   │
-│     ├── 💻 Code task?                                                    │
-│     │   └→ Multi-Agent Orchestrator → Local Sandbox → stream output     │
-│     │                                                                   │
-│     └── 💬 Standard chat?                                                │
-│         └→ Smart Router → stream SSE tokens from Groq/Gemini/OpenRouter  │
-│                                                                         │
-│  5. React renders tokens in real-time (useChatStream.ts)                 │
-│                                                                         │
-│  6. PostgreSQL persists conversation + Redis caches session state        │
-│                                                                         │
-└──────────────────────────────────────────────────────────────────────────┘
-```
-
-### 🤖 Multi-Agent Autonomous Code Pipeline
-
-```mermaid
-graph TD
-    User["👤 User Request"]
-    
-    subgraph "🧠 AI Orchestrator Layer"
-        Planner["📋 Planner Agent<br/>(Llama 3.3 via Groq)<br/>Decomposes Task"]
-        Coder["💻 Coder Agent<br/>(NVIDIA StarCoder2 / GLM 5.2)<br/>Generates Code"]
-        Reviewer["🔍 Reviewer Agent<br/>(NVIDIA NIM)<br/>Audits & Secures Code"]
-    end
-    
-    subgraph "💻 Local Execution Sandbox"
-        Proc["Local Subprocess<br/>(Python tempfile)"]
-        Resources["Security Policies:<br/>- AST Safety Validation<br/>- Execution Timeout (30s)"]
-        Exec["Runtime Execution"]
-    end
-    
-    Stream["📺 Real-time WebSocket Stream<br/>(stdout/stderr to User UI)"]
-    
-    User --> Planner
-    Planner --> Coder
-    Coder --> Reviewer
-    Reviewer -- "Fails Audit / Refactors" --> Coder
-    Reviewer -- "Approved" --> Proc
-    Proc --- Resources
-    Proc --> Exec
-    Exec -- "Runtime Error" --> Reviewer
-    Exec -- "Success" --> Stream
-```
-
-### 🔬 Deep Research & Synthesis Engine
-
-```mermaid
-graph TD
-    Query["🔍 User Query"]
-    
-    subgraph "🧠 Deep Research Pipeline"
-        Extract["🔑 Keyword Extraction<br/>(YAKE + SpaCy NER)"]
-        
-        subgraph "🌐 Parallel Search Dispatch"
-            DDG["DuckDuckGo API<br/>(Live Web Data)"]
-            Arxiv["Arxiv API<br/>(Academic Papers)"]
-        end
-        
-        Scrape["📄 Content Extraction<br/>(trafilatura)"]
-        Synthesis["🧠 Multi-Source Synthesis<br/>(LLM Aggregation)"]
-    end
-    
-    Query --> Extract
-    Extract --> DDG
-    Extract --> Arxiv
-    DDG --> Scrape
-    Arxiv --> Scrape
-    Scrape --> Synthesis
-    Synthesis --> Stream["📡 Streaming Response<br/>(With Citations & Grounding)"]
-```
-
-### 📚 RAG & Vector Knowledge Base
-
-```mermaid
-graph LR
-    subgraph "📥 Document Ingestion Pipeline"
-        Doc["📄 Upload Document<br/>(PDF, DOCX, TXT, HTML)"]
-        Parser["✂️ Parsers<br/>(PyPDF, BeautifulSoup)"]
-        Chunker["🧩 Intelligent Chunker<br/>(512 tokens / 64 overlap)"]
-        Embedder["🧠 Neural Embedder<br/>(all-MiniLM-L6-v2)"]
-        VDB[("🔵 Vector DB<br/>(ChromaDB/FAISS)")]
-    end
-    
-    subgraph "💬 Query Execution"
-        Query["User Question"]
-        SimSearch["🔍 Cosine Similarity Search"]
-        LLM["🤖 LLM Context Injection"]
-        Response["💬 Grounded Response"]
-    end
-    
-    Doc --> Parser --> Chunker --> Embedder --> VDB
-    Query --> SimSearch
-    VDB -. "Top-k semantic chunks" .-> SimSearch
-    SimSearch --> LLM
-    LLM --> Response
-```
-
-### 🎛️ Enterprise Admin Command Center
-
-```mermaid
-graph TD
-    Admin["🎛️ Super Admin / Operator"]
-    
-    subgraph "🏢 Admin Frontend (React + Three.js)"
-        Dash["📊 Telemetry & Analytics"]
-        Infra["🏗️ 3D Infrastructure Map"]
-        Sec["🔒 Security & AI Firewall"]
-        Ops["⚙️ Auto-Healing & Chaos Monkey"]
-        Biz["💼 Subscriptions & Tenancy"]
-    end
-    
-    subgraph "🛡️ API Governance Layer"
-        Audit["Audit Logger (Tamper-Proof)"]
-        Rules["RBAC & Access Control"]
-        Meter["Usage Metering & Limits"]
-    end
-    
-    DB[("🐘 PostgreSQL / Redis State")]
-    
-    Admin --> Dash
-    Admin --> Infra
-    Admin --> Sec
-    Admin --> Ops
-    Admin --> Biz
-    
-    Dash --> Audit
-    Sec --> Rules
-    Biz --> Meter
-    
-    Audit --> DB
-    Rules --> DB
-    Meter --> DB
-```
-
----
+> [!NOTE]
+> The comprehensive system architecture, multi-agent engine diagrams, and technical module references have been moved to [ARCHITECTURE.md](ARCHITECTURE.md) to keep this guide focused on deployment and usage.
 
 ## 🛠️ Technology Stack
 
@@ -1014,6 +768,9 @@ InfiChat is engineered as a **true enterprise monorepo** spanning 4 application 
 <details open>
 <summary><strong>🗺️ Complete Directory Tree</strong></summary>
 
+> [!CAUTION]
+> **🔒 SPECIFIC PROPRIETARY SCRIPTS & SECRETS:** Internal testing, migration, and proprietary utility scripts (e.g., `fix_*.py`, `migrate_*.py`, `test_*.py`), Core AI Services (`backend/app/services/deep_research/`, `backend/app/services/deep_thinking/`, `backend/app/services/web_search/`, `backend/app/services/code_orchestrator/`, `backend/app/services/code_agent.py`), and Proprietary Frontend Components (`frontend/src/pages/CodeAgent.tsx`, `frontend/src/components/ui/ai-agent-pipeline.tsx`, `frontend/src/components/DeepResearchProgress.tsx`, `frontend/src/components/DeepThinkingProgress.tsx`, `frontend/src/components/WebSearchProgress.tsx`, `frontend/src/hooks/useWebSearchStream.ts`) are intentionally hidden from this public documentation to protect proprietary intellectual property.
+
 ```text
 AI-Chatbot-InfiChat/
 │
@@ -1049,7 +806,7 @@ AI-Chatbot-InfiChat/
 │   │   │   ├── ws_broadcast.py              # WebSocket: real-time broadcast (7,345 B)
 │   │   │   └── ws_code.py                   # WebSocket: live code execution (4,088 B)
 │   │   │
-│   │   ├── services/                        # ══ Business Logic Layer (19 services + 3 sub-modules) ══
+│   │   ├── services/                        # ══ Business Logic Layer (18 services) ══
 │   │   │   ├── llm_router.py                # 🧠 Smart LLM Router (20,630 B)
 │   │   │   ├── chat_service.py              # Chat session management (13,466 B)
 │   │   │   ├── voice_service.py             # Voice pipeline: TTS + STT (9,342 B)
@@ -1059,7 +816,6 @@ AI-Chatbot-InfiChat/
 │   │   │   ├── image_service.py             # Image generation orchestration (4,478 B)
 │   │   │   ├── email_service.py             # Transactional email & OTP (20,665 B)
 │   │   │   ├── agent_service.py             # Agent task coordination (3,447 B)
-│   │   │   ├── code_agent.py                # Code execution agent (3,535 B)
 │   │   │   ├── ai_orchestrator.py           # High-level AI orchestration (2,358 B)
 │   │   │   ├── ai_firewall.py               # Prompt safety & injection prevention (2,274 B)
 │   │   │   ├── memory_service.py            # Conversation memory management (2,966 B)
@@ -1069,25 +825,6 @@ AI-Chatbot-InfiChat/
 │   │   │   ├── subscription_service.py      # Plan management & billing (11,576 B)
 │   │   │   ├── seed_admin.py                # Default admin user seeding (3,777 B)
 │   │   │   ├── seed_plans.py                # Default plan seeding (5,400 B)
-│   │   │   │
-│   │   │   ├── code_orchestrator/           # ── Multi-Agent Code Pipeline ──
-│   │   │   │   ├── __init__.py              # Module exports (295 B)
-│   │   │   │   ├── orchestrator.py          # Pipeline coordinator (14,467 B)
-│   │   │   │   ├── agents.py                # Planner, Coder, Reviewer agents (16,761 B)
-│   │   │   │   └── models.py                # Agent data models (2,455 B)
-│   │   │   │
-│   │   │   ├── deep_research/               # ── Autonomous Research Engine ──
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── orchestrator.py          # Research pipeline coordinator (14,294 B)
-│   │   │   │   ├── models.py                # Research data models (6,693 B)
-│   │   │   │   ├── agents/                  # Search, synthesis, citation agents
-│   │   │   │   └── utils/                   # NLP utilities, keyword extraction
-│   │   │   │
-│   │   │   └── deep_thinking/               # ── Extended Reasoning Engine ──
-│   │   │       ├── __init__.py
-│   │   │       ├── orchestrator.py          # Thinking pipeline coordinator (11,901 B)
-│   │   │       ├── models.py                # Thinking data models (2,297 B)
-│   │   │       └── agents/                  # Chain-of-thought reasoning agents
 │   │   │
 │   │   ├── core/                            # ══ Security & Configuration Layer ══
 │   │   │   ├── config.py                    # Pydantic Settings — all env vars (5,061 B)
@@ -1153,15 +890,13 @@ AI-Chatbot-InfiChat/
 │   │   ├── App.tsx                          # Root application with routing (20,471 B)
 │   │   ├── main.tsx                         # React DOM render entrypoint
 │   │   │
-│   │   ├── components/                      # ── 14 Reusable UI Components ──
+│   │   ├── components/                      # ── 12 Reusable UI Components ──
 │   │   │   ├── ChatInput.tsx                # Message input with voice, attachments (18,141 B)
 │   │   │   ├── ChatMessage.tsx              # Message bubble with markdown (11,177 B)
 │   │   │   ├── Sidebar.tsx                  # Navigation sidebar (21,986 B)
 │   │   │   ├── SettingsModal.tsx            # Comprehensive settings panel (70,957 B)
 │   │   │   ├── CommandPalette.tsx           # ⌘K quick-action launcher (6,465 B)
 │   │   │   ├── AgentTaskPlan.tsx            # Multi-agent visualization (15,292 B)
-│   │   │   ├── DeepResearchProgress.tsx     # Research pipeline UI (7,561 B)
-│   │   │   ├── DeepThinkingProgress.tsx     # Thinking chain UI (14,265 B)
 │   │   │   ├── TokenUsageBadge.tsx          # Token consumption display (7,987 B)
 │   │   │   ├── SubscriptionGate.tsx         # Plan enforcement modal (10,588 B)
 │   │   │   ├── ErrorBoundary.tsx            # Error boundary wrapper (3,405 B)
@@ -1169,12 +904,10 @@ AI-Chatbot-InfiChat/
 │   │   │   ├── settings/                    # Settings sub-components (5 files)
 │   │   │   ├── sidebar/                     # Sidebar sub-components (2 files)
 │   │   │   └── ui/                          # Primitives: Button, Card, Input, Switch, Toast,
-│   │   │                                    # ConfirmDialog, Skeleton, TypingIndicator,
-│   │   │                                    # ai-agent-pipeline (9 files)
+│   │   │                                    # ConfirmDialog, Skeleton, TypingIndicator
 │   │   │
-│   │   ├── pages/                           # ── 9 Top-Level Route Views ──
+│   │   ├── pages/                           # ── 8 Top-Level Route Views ──
 │   │   │   ├── Chat.tsx                     # Main chat interface (18,427 B)
-│   │   │   ├── CodeAgent.tsx                # Multi-agent code execution (38,916 B)
 │   │   │   ├── ImageGen.tsx                 # AI image generation (8,982 B)
 │   │   │   ├── RAG.tsx                      # Knowledge base management (9,202 B)
 │   │   │   ├── Snippets.tsx                 # Code snippet manager (13,651 B)
@@ -1272,6 +1005,7 @@ AI-Chatbot-InfiChat/
 ├── 🔄  .github/workflows/
 │   └── ci.yml                               # CI pipeline: backend tests + frontend/admin builds
 │
+├── docker-compose.yml                       # Docker orchestration for services
 ├── package.json                             # Monorepo root — concurrently orchestrator
 ├── package-lock.json                        # Dependency lock file
 ├── .gitignore                               # Source protection configuration
@@ -1460,198 +1194,6 @@ server {
 - [ ] Configure Redis authentication with a strong password
 - [ ] Set up automated backups for PostgreSQL and ChromaDB data volumes
 - [ ] Monitor with Prometheus metrics (`/api/metrics`) + Grafana dashboards
-
----
-
-## 🎙️ Voice System Technical Reference
-
-### TTS Pipeline
-
-```
-User requests TTS
-      │
-      ▼
-voice_service.py → edge-tts.Communicate(text, voice=profile)
-      │
-      ▼
-tts_formatter.py → Indian number normalization + abbreviation expansion
-      │
-      ▼
-Async MP3 chunk generator
-      │
-      ▼
-StreamingResponse (MIME: audio/mpeg)
-      │
-      ▼
-Browser Audio element — starts playing on first chunk (<1s latency)
-```
-
-**Indian Number Normalization Examples:**
-
-| Input | Spoken Output |
-|:---|:---|
-| `₹1,50,000` | "One lakh fifty thousand rupees" |
-| `2.5 Cr` | "Two point five crore" |
-| `10L` | "Ten lakh" |
-| `Dr. Sharma` | "Doctor Sharma" |
-| `AI` | "A I" |
-| `OTP` | "O T P" |
-
-### STT Pipeline
-
-```
-User records audio (browser MediaRecorder API)
-      │
-      ▼
-Audio blob → POST /api/voice/stt (multipart)
-      │
-      ▼
-faster_whisper.WhisperModel.transcribe(audio_file)
-      │
-      ▼
-Returns: { text: "...", language: "en", confidence: 0.98 }
-```
-
----
-
-## 📚 RAG Pipeline Technical Reference
-
-```
-Document Upload → Parse (PyPDF/pdfplumber/python-docx/bs4)
-      │
-      ▼
-Recursive text chunking (512 tokens, 64-token overlap)
-      │
-      ▼
-sentence-transformers encode → 384-dim vectors
-      │
-      ▼
-ChromaDB.add() or FAISS.add() → persisted to local disk
-      │
-      ▼
-On Query: vector_store.query(embedding, n_results=5)
-      │
-      ▼
-Top-k chunks → injected as system context to LLM
-      │
-      ▼
-LLM responds with grounded, document-cited answer
-```
-
----
-
-## 🤖 Code Agent Technical Reference
-
-```
-User sends code request → Planner (Llama 3.3) decomposes task
-      │
-      ▼
-Coder Agent (NVIDIA NIM) generates Python code
-      │
-      ▼
-Reviewer Agent (NVIDIA NIM) audits for bugs + security
-      │
-      ▼
-Orchestrator validates and approves
-      │
-      ▼
-sandbox_service.py → subprocess.Popen(
-    image="python:3.11-slim",
-    command=["python", "-c", code],
-    mem_limit="256m",
-    cpu_period=100000,
-    cpu_quota=50000,        # 50% CPU limit
-    network_disabled=True,  # No internet
-    remove=True             # Ephemeral
-)
-      │
-      ▼
-stdout/stderr → streamed via WebSocket (ws_code.py) to frontend
-      │
-      ▼
-On error: LLM reads traceback → self-debugs → re-executes (auto-retry loop)
-```
-
----
-
-## 🧠 Cognitive Engines Technical Reference
-
-### Deep Research — Multi-Source Synthesis
-
-```
-User submits research query
-      │
-      ▼
-Query Analysis → YAKE keyword extraction + SpaCy NER
-      │
-      ▼
-Parallel Search Dispatch:
-  ├── DuckDuckGo web search (top N results)
-  └── Arxiv academic paper search (relevant papers)
-      │
-      ▼
-Content Extraction → trafilatura (web) + Arxiv API (papers)
-      │
-      ▼
-Multi-source Synthesis → LLM aggregation with citations
-      │
-      ▼
-Streaming response with source references → DeepResearchProgress.tsx
-```
-
-### Deep Thinking — Extended Chain-of-Thought
-
-```
-User submits complex reasoning task
-      │
-      ▼
-Initial Analysis → Problem decomposition
-      │
-      ▼
-Iterative Thinking Steps:
-  ├── Step 1: Hypothesis generation
-  ├── Step 2: Evidence gathering
-  ├── Step 3: Reasoning validation
-  └── Step N: Conclusion synthesis
-      │
-      ▼
-Each step streamed in real-time → DeepThinkingProgress.tsx
-      │
-      ▼
-Final synthesized answer with complete reasoning chain
-```
-
----
-
-## 🎛️ Admin Command Center Module Reference
-
-| Module | Source File | Size | Key Technologies |
-|:---|:---|:---:|:---|
-| Analytics | `Analytics.tsx` | 7.3 KB | Recharts |
-| Auto Healing | `AutoHealing.tsx` | 10.1 KB | State machines |
-| Chaos Monkey | `ChaosMonkey.tsx` | 14.4 KB | Failure injection |
-| Cluster Federation | `ClusterFederation.tsx` | 8.6 KB | Multi-node mgmt |
-| Database Control | `DatabaseControl.tsx` | 18.1 KB | PostgreSQL/Redis/ChromaDB |
-| DEFCON Controls | `DefconControls.tsx` | 12.4 KB | Security posture |
-| Developer Keys | `DeveloperKeys.tsx` | 9.3 KB | Key lifecycle |
-| Global Broadcast | `GlobalBroadcast.tsx` | 18.5 KB | Notifications |
-| Hardware/GPU | `HardwareGPU.tsx` | 6.9 KB | Resource monitoring |
-| Knowledge Graph | `KnowledgeGraph.tsx` | 9.9 KB | React Force Graph 3D |
-| Model Hub | `ModelHub.tsx` | 13.3 KB | LLM registry |
-| Network Security | `NetworkSecurity.tsx` | 20.4 KB | Firewall rules |
-| Platform Branding | `PlatformBranding.tsx` | 9.5 KB | White-label |
-| Platform Outage | `PlatformOutage.tsx` | 19.4 KB | Incident management |
-| Predictive Scaling | `PredictiveScaling.tsx` | 7.7 KB | AI scaling |
-| Prompt Firewall | `PromptFirewall.tsx` | 9.1 KB | Injection prevention |
-| RBAC Studio | `RBACStudio.tsx` | 8.9 KB | Role management |
-| Release Management | `ReleaseManagement.tsx` | 42.4 KB | Deploy/rollback |
-| Subscription Plans | `SubscriptionPlans.tsx` | 23.3 KB | Plan CRUD |
-| Telemetry | `Telemetry.tsx` | 8.7 KB | Observability |
-| Tenant Manager | `TenantManager.tsx` | 7.6 KB | Multi-tenancy |
-| Topology Map | `TopologyMap.tsx` | 7.7 KB | Three.js |
-| Usage Monitoring | `UsageMonitoring.tsx` | 9.8 KB | Quotas/tracking |
-| User Plan Manager | `UserPlanManager.tsx` | 17.6 KB | User assignments |
-| Workflow Orchestrator | `WorkflowOrchestrator.tsx` | 13.0 KB | React Flow |
 
 ---
 

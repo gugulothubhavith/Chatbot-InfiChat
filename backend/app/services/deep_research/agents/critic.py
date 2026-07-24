@@ -49,10 +49,11 @@ Evaluate these 6 quality checks and return JSON:
   ],
   "verdict": "COMPLETE" or "NEEDS_MORE",
   "feedback": "what additional research is needed if NEEDS_MORE",
-  "overall_confidence": 0.0-1.0
+  "overall_confidence": 0.0-1.0,
+  "targeted_queries": ["if NEEDS_MORE, provide 3-5 specific search queries to resolve contradictions or missing info"]
 }}
 
-Be strict but fair. If 4+ checks pass, verdict should be COMPLETE.
+Be strict but fair. If 4+ checks pass AND there are no major unresolved contradictions, verdict should be COMPLETE.
 Return ONLY valid JSON."""
 
 
@@ -115,6 +116,7 @@ async def run(state: ResearchState, llm_call) -> ResearchState:
             verdict=verdict,
             feedback=data.get("feedback", ""),
             overall_confidence=data.get("overall_confidence", 0.5),
+            targeted_queries=data.get("targeted_queries", []),
         )
 
     except Exception as e:

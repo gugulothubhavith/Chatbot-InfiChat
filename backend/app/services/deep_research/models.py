@@ -68,6 +68,8 @@ class SearchQuery(BaseModel):
     query: str
     category: str = "general"  # supporting, debunking, academic, news, data, temporal, regional
     priority: int = 5  # 1-10
+    target_engines: str = "google,bing,duckduckgo"
+    time_range: str = ""  # "", "day", "week", "month", "year"
 
 
 # ── Agents 4-6 Output ──────────────────────────────────
@@ -146,6 +148,7 @@ class QualityGateResult(BaseModel):
     verdict: CriticVerdict = CriticVerdict.NEEDS_MORE
     feedback: str = ""
     overall_confidence: float = 0.0
+    targeted_queries: List[str] = Field(default_factory=list)
 
 
 # ── Agent 11 Output ─────────────────────────────────────

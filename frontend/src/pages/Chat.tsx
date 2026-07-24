@@ -7,6 +7,9 @@ import { useAuth } from "../hooks/useAuth";
 import { useChatStream } from "../hooks/useChatStream";
 import { useResearchStream } from "../hooks/useResearchStream";
 import { useThinkingStream } from "../hooks/useThinkingStream";
+import { useWebSearchStream } from "../hooks/useWebSearchStream";
+import { DeepResearchProgress } from "../components/DeepResearchProgress";
+import { WebSearchProgress } from "../components/WebSearchProgress";
 import { ChatMessage } from "../components/ChatMessage";
 import { ChatInput } from "../components/ChatInput";
 import { Skeleton } from "../components/ui/Skeleton";
@@ -60,6 +63,7 @@ export default function Chat() {
   const [showToolsMenu, setShowToolsMenu] = useState(false);
   const [isDeepResearch, setIsDeepResearch] = useState(false);
   const [isDeepThinking, setIsDeepThinking] = useState(false);
+  const [isWebSearch, setIsWebSearch] = useState(false);
   const [isImageGen, setIsImageGen] = useState(false);
   const [useRag, setUseRag] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -74,6 +78,7 @@ export default function Chat() {
   const { sendStreamingMessage, cancelStream, isStreaming } = useChatStream();
   const { startResearch, cancelResearch, progress: researchProgress, isResearching } = useResearchStream();
   const { startThinking, cancelThinking, progress: thinkingProgress, isThinking } = useThinkingStream();
+  const { startWebSearch, cancelWebSearch, progress: webSearchProgress, isWebSearching } = useWebSearchStream();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -186,6 +191,15 @@ export default function Chat() {
       return;
     }
 
+    if (isWebSearch) {
+      setIsWebSearch(false);
+      addAssistantMessage("", "web-search");
+      await startWebSearch(textToSend, token || "", sessionId, activeModel, navigate, (report) => { addAssistantMessage(report, "web-search"); });
+      setLoading(false);
+      window.dispatchEvent(new Event("chat-updated"));
+      return;
+    }
+
     if (isDeepThinking) {
       setIsDeepThinking(false);
       addAssistantMessage("", "deep-thinking");
@@ -215,7 +229,7 @@ export default function Chat() {
         if (ttsRes.ok) { const blob = await ttsRes.blob(); const audio = new Audio(URL.createObjectURL(blob)); audio.play(); }
       } catch {}
     }
-  }, [input, selectedImage, selectedFile, loading, selectedModel, isImageGen, isDeepResearch, isDeepThinking, useRag, messages, token, sessionId, settings]);
+  }, [input, selectedImage, selectedFile, loading, selectedModel, isImageGen, isDeepResearch, isDeepThinking, isWebSearch, useRag, messages, token, sessionId, settings]);
 
   const toggleRecording = async () => {
     if (isRecording) { mediaRecorderRef.current?.stop(); setIsRecording(false); return; }
@@ -309,6 +323,13 @@ export default function Chat() {
               return acc;
             }, [])
           )}
+          
+          {/* Display active live streams at the bottom */}
+          {isWebSearching && (
+            <div className="w-full max-w-4xl mx-auto px-4 flex justify-start">
+              <WebSearchProgress status={webSearchProgress} />
+            </div>
+          )}
           {loading && !isStreaming && !isResearching && !isThinking && (
             <div className="flex w-full animate-in fade-in max-w-4xl mx-auto px-4">
               <div className="h-8 w-8 rounded-full bg-gray-500/10 mr-4 flex-shrink-0" />
@@ -323,13 +344,14 @@ export default function Chat() {
         </div>
 
         <ChatInput input={input} setInput={setInput} loading={loading}
-          isDeepResearch={isDeepResearch} isDeepThinking={isDeepThinking}
+          isWebSearch={isWebSearch} isDeepResearch={isDeepResearch} isDeepThinking={isDeepThinking}
           isImageGen={isImageGen} useRag={useRag}
           selectedImage={selectedImage} selectedFile={selectedFile}
           selectedModel={selectedModel}
           showModelDropdown={showModelDropdown} showToolsMenu={showToolsMenu}
           isRecording={isRecording}
           onSend={handleSendMessage} onKeyDown={handleKeyDown}
+          onToggleWebSearch={() => setIsWebSearch(!isWebSearch)}
           onToggleResearch={() => setIsDeepResearch(!isDeepResearch)}
           onToggleThinking={() => setIsDeepThinking(!isDeepThinking)}
           onToggleImageGen={() => setIsImageGen(!isImageGen)}

@@ -7,6 +7,22 @@
 # ═══════════════════════════════════════════════════════════════════
 #  🔒 SPECIFIC PROPRIETARY SCRIPTS & SECRETS
 # ═══════════════════════════════════════════════════════════════════
+
+# Core AI Services (Backend IP)
+backend/app/services/deep_research/
+backend/app/services/deep_thinking/
+backend/app/services/web_search/
+backend/app/services/code_orchestrator/
+backend/app/services/code_agent.py
+
+# Proprietary Frontend Components (UI & Logic IP)
+frontend/src/pages/CodeAgent.tsx
+frontend/src/components/ui/ai-agent-pipeline.tsx
+frontend/src/components/DeepResearchProgress.tsx
+frontend/src/components/DeepThinkingProgress.tsx
+frontend/src/components/WebSearchProgress.tsx
+frontend/src/hooks/useWebSearchStream.ts
+
 # ═══════════════════════════════════════════════════════════════════
 #  🔐 SECRETS, KEYS & ENVIRONMENT FILES
 # ═══════════════════════════════════════════════════════════════════

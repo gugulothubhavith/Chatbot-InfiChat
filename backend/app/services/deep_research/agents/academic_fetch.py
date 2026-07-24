@@ -1,10 +1,9 @@
-"""Agent 5: AcademicFetchAgent — Multi-source academic search with graceful degradation.
+"""Agent 5: AcademicFetchAgent — Multi-source academic search via SearxNG.
 
 Approach:
-1. Try arXiv API first (free, no key)
-2. Try Wikipedia API as fallback (free, no key)
-3. If all APIs fail, use LLM to generate simulated academic sources
-4. Handle ALL errors gracefully
+1. Try SearxNG first with academic engines (arxiv, scholar, pubmed, wikipedia)
+2. If SearxNG fails, use LLM to generate simulated academic sources
+3. Handle ALL errors gracefully
 """
 
 from app.core.json_utils import extract_json_from_text
@@ -14,57 +13,67 @@ import logging
 from typing import List, Optional
 
 from app.services.deep_research.models import ResearchState, SourceDocument, SourceType
-from app.services.deep_research.utils.scraping import get_domain, compute_authority_score
+from app.services.deep_research.utils.scraping import search_searxng, get_domain, compute_authority_score
 
 logger = logging.getLogger(__name__)
 
 
 async def run(state: ResearchState, llm_call=None) -> ResearchState:
-    """Fetch academic sources from arXiv, Wikipedia, and LLM fallback."""
+    """Fetch academic sources from SearxNG academic engines and LLM fallback."""
     topic = state.brief.topic if state.brief else state.query
     key_aspects = state.brief.key_aspects if state.brief else []
 
     academic_sources: List[SourceDocument] = []
     errors: List[str] = []
 
-    # ── Engine 1: arXiv ──────────────────────────────────
+    # ── Engine 1: SearxNG (Academic Engines) ──────────────────────────────────
     try:
-        arxiv_results = await _search_arxiv(topic, max_results=6)
-        academic_sources.extend(arxiv_results)
-        logger.info(f"arXiv returned {len(arxiv_results)} results for '{topic[:60]}'")
-    except Exception as e:
-        errors.append(f"arXiv: {e}")
-        logger.warning(f"arXiv search failed: {e}")
+        searxng_results = await search_searxng(topic, max_results=8, engines="arxiv,scholar,pubmed,wikipedia")
+        
+        for r in searxng_results:
+            url = r.get("url", "")
+            if not url or url == "#" or url.startswith("javascript:"):
+                continue
 
-    # Also search key aspects on arXiv
+            doc = SourceDocument(
+                url=url,
+                title=r.get("title", ""),
+                snippet=r.get("snippet", "")[:500],
+                source_type=SourceType.ACADEMIC,
+                authority_score=compute_authority_score(url) or 0.85, # Default high authority for academic
+                domain=get_domain(url),
+                published_date=r.get("date"),
+            )
+            academic_sources.append(doc)
+            
+        logger.info(f"SearxNG Academic returned {len(academic_sources)} results for '{topic[:60]}'")
+    except Exception as e:
+        errors.append(f"SearxNG Academic: {e}")
+        logger.warning(f"SearxNG Academic search failed: {e}")
+
+    # Also search key aspects
     if not academic_sources and key_aspects:
-        # Only if arXiv didn't return much for the main topic
         for aspect in key_aspects[:2]:
             try:
-                arxiv_aspect = await _search_arxiv(aspect, max_results=2)
-                academic_sources.extend(arxiv_aspect)
+                aspect_results = await search_searxng(aspect, max_results=3, engines="arxiv,scholar,pubmed,wikipedia")
+                for r in aspect_results:
+                    url = r.get("url", "")
+                    if not url: continue
+                    doc = SourceDocument(
+                        url=url,
+                        title=r.get("title", ""),
+                        snippet=r.get("snippet", "")[:500],
+                        source_type=SourceType.ACADEMIC,
+                        authority_score=compute_authority_score(url) or 0.85,
+                        domain=get_domain(url),
+                        published_date=r.get("date"),
+                    )
+                    academic_sources.append(doc)
             except Exception as e:
-                logger.debug(f"arXiv aspect search failed for '{aspect[:40]}': {e}")
+                logger.debug(f"SearxNG Academic aspect search failed for '{aspect[:40]}': {e}")
 
-    # ── Engine 2: Wikipedia ─────────────────────────────
-    try:
-        wiki_results = await _search_wikipedia(topic, max_results=3)
-        academic_sources.extend(wiki_results)
-        logger.info(f"Wikipedia returned {len(wiki_results)} results for '{topic[:60]}'")
-    except Exception as e:
-        errors.append(f"Wikipedia: {e}")
-        logger.warning(f"Wikipedia search failed: {e}")
 
-    # Also search key aspects on Wikipedia
-    if key_aspects:
-        for aspect in key_aspects[:2]:
-            try:
-                wiki_aspect = await _search_wikipedia(aspect, max_results=1)
-                academic_sources.extend(wiki_aspect)
-            except Exception as e:
-                logger.debug(f"Wikipedia aspect search failed for '{aspect[:40]}': {e}")
-
-    # ── Engine 3: LLM Fallback (if no results from APIs) ─
+    # ── Engine 2: LLM Fallback (if no results from APIs) ─
     if not academic_sources and llm_call:
         logger.info(f"No academic sources from APIs, using LLM fallback for '{topic[:60]}'")
         try:
@@ -92,92 +101,6 @@ async def run(state: ResearchState, llm_call=None) -> ResearchState:
         f"(total now {len(state.sources)}). Errors: {len(errors)}"
     )
     return state
-
-
-# ── arXiv API ─────────────────────────────────────────────
-
-async def _search_arxiv(query: str, max_results: int = 5) -> List[SourceDocument]:
-    """Search arXiv API (free, no key needed)."""
-    try:
-        import arxiv
-
-        def _search_sync():
-            client = arxiv.Client()
-            search = arxiv.Search(
-                query=query,
-                max_results=max_results,
-                sort_by=arxiv.SortCriterion.Relevance,
-            )
-            return list(client.results(search))
-
-        papers = await asyncio.to_thread(_search_sync)
-
-        results = []
-        for paper in papers:
-            results.append(SourceDocument(
-                url=paper.entry_id,
-                title=paper.title,
-                snippet=paper.summary[:500] if paper.summary else "",
-                full_text=paper.summary or "",
-                source_type=SourceType.ACADEMIC,
-                authority_score=0.90,
-                published_date=paper.published.isoformat() if paper.published else None,
-                domain="arxiv.org",
-            ))
-        return results
-    except ImportError:
-        logger.debug("arxiv package not installed, skipping arXiv search")
-        return []
-    except Exception as e:
-        logger.warning(f"arXiv search failed: {e}")
-        return []
-
-
-# ── Wikipedia API ─────────────────────────────────────────
-
-async def _search_wikipedia(query: str, max_results: int = 3) -> List[SourceDocument]:
-    """Search Wikipedia API (free, no key needed)."""
-    try:
-        import httpx
-
-        async with httpx.AsyncClient(timeout=10.0, headers={"User-Agent": "SelfHostedAIChatbot/1.0 (contact@example.com)"}) as client:
-            resp = await client.get(
-                "https://en.wikipedia.org/w/api.php",
-                params={
-                    "action": "query",
-                    "list": "search",
-                    "srsearch": query,
-                    "srlimit": max_results,
-                    "format": "json",
-                    "srprop": "snippet|titlesnippet|size|wordcount",
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-
-        results = []
-        import re as re_mod
-        for item in data.get("query", {}).get("search", []):
-            title = item.get("title", "")
-            snippet = re_mod.sub(r'<[^>]+>', '', item.get("snippet", ""))
-            page_url = f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
-
-            results.append(SourceDocument(
-                url=page_url,
-                title=title,
-                snippet=snippet[:500],
-                source_type=SourceType.WIKIPEDIA,
-                authority_score=0.80,
-                domain="en.wikipedia.org",
-            ))
-
-        return results
-    except ImportError:
-        logger.debug("httpx not available, skipping Wikipedia search")
-        return []
-    except Exception as e:
-        logger.warning(f"Wikipedia search failed: {e}")
-        return []
 
 
 # ── LLM Fallback ─────────────────────────────────────────

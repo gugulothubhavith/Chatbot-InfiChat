@@ -30,8 +30,8 @@ const VARIANT_CONFIGS: Record<PipelineVariant, PipelineConfig> = {
       { label: "Report Gen", status: "queued" },
     ],
     messages: [
-      'Received: "Analyze recent trends in quantum computing..."',
-      "Dispatching 11 research agents in parallel",
+      "Initializing 12-agent pipeline...",
+      "Dispatching 12 research agents in parallel",
       "Agent SearchMaster: Crawling 24 web sources...",
       "Agent FactChecker: Cross-referencing 8 claims",
       "Agent Synthesizer: Building citation graph (47 nodes)",
@@ -44,7 +44,7 @@ const VARIANT_CONFIGS: Record<PipelineVariant, PipelineConfig> = {
     stats: [
       { label: "WORKFLOWS", value: "342" },
       { label: "SOURCES", value: "24" },
-      { label: "AGENTS", value: "11" },
+      { label: "AGENTS", value: "12" },
       { label: "LATENCY", value: "4.2s" },
     ],
     stack: "Gemini · Serper · RAG",
@@ -160,9 +160,19 @@ export interface AgentPipelineProps {
   dynamicOutputs?: { label: string; status: "done" | "active" | "queued" }[];
   dynamicStack?: string;
   dynamicNodes?: DynamicNode[];
+  agentCount?: number;
 }
 
-export default function AIAgentPipeline({ variant = "code", className = "", dynamicStats, dynamicMessages, dynamicOutputs, dynamicStack, dynamicNodes }: AgentPipelineProps) {
+export default function AIAgentPipeline({ 
+  variant = "code", 
+  agentCount = 12,
+  className = "", 
+  dynamicStats, 
+  dynamicMessages, 
+  dynamicOutputs, 
+  dynamicStack, 
+  dynamicNodes 
+}: AgentPipelineProps) {
   const config = VARIANT_CONFIGS[variant];
   const [messageLog, setMessageLog] = useState<string[]>([]);
   const [workflows, setWorkflows] = useState(1247);

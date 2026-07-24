@@ -1,0 +1,94 @@
+services:
+  # 1. PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: infichat_postgres
+    environment:
+      POSTGRES_USER: infichat_user
+      POSTGRES_PASSWORD: infichat_password
+      POSTGRES_DB: infichat_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  # 2. Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: infichat_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+
+  # 3. ChromaDB Vector Database
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: infichat_chroma
+    ports:
+      - "8001:8000"
+    volumes:
+      - chromadb_data:/chroma/chroma
+    restart: always
+
+  # 4. SearxNG AI Web Search Engine
+  searxng:
+    image: searxng/searxng:latest
+    container_name: infichat_searxng
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./searxng-data:/etc/searxng
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080/
+    restart: always
+
+  # 5. FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+    container_name: infichat_backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+      - chromadb
+      - searxng
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://infichat_user:infichat_password@postgres:5432/infichat_db
+      - REDIS_URL=redis://redis:6379/0
+      - RAG_BACKEND=chroma
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - SEARXNG_URL=http://searxng:8080
+    restart: always
+
+  # 6. Main Frontend
+  frontend:
+    build:
+      context: ./frontend
+    container_name: infichat_frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: always
+
+  # 7. Admin Frontend
+  admin-frontend:
+    build:
+      context: ./admin-frontend
+    container_name: infichat_admin
+    ports:
+      - "5174:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  postgres_data:
+  redis_data:
+  chromadb_data:

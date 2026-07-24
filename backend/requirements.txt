@@ -23,6 +23,7 @@ python-multipart==0.0.9
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
+google-auth>=2.0.0
 httpx==0.26.0
 email-validator>=2.1.0
 slowapi>=0.1.9
@@ -75,8 +76,10 @@ arxiv>=2.1.0
 spacy>=3.7.0
 yake>=0.4.8
 dateparser>=1.2.0
+playwright>=1.41.0
 
 # ── INFRASTRUCTURE ────────────────────────────────────────────
 docker>=7.1.0              # Optional: for Docker sandbox
 prometheus_client==0.20.0
 pip-audit>=2.7.2
+json_repair

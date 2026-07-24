@@ -47,7 +47,7 @@ export function DeepResearchProgress({ progress }: { progress: any }) {
             Deep Research Node Active
           </h3>
           <p className="text-[13px] font-medium" style={{ color: 'var(--color-text-tertiary)' }}>
-            {progress.phase || "Initializing 11-agent pipeline..."}
+            {progress.phase || "Initializing 12-agent pipeline..."}
           </p>
         </div>
         <Spinner className="h-5 w-5 animate-spin" style={{ color: 'var(--color-accent)' }} />
@@ -59,7 +59,7 @@ export function DeepResearchProgress({ progress }: { progress: any }) {
         dynamicStats={[
           { label: "WORKFLOWS", value: agents.length },
           { label: "SOURCES", value: sources.length },
-          { label: "AGENTS", value: activeCount || agents.length || 11 },
+          { label: "AGENTS", value: activeCount || agents.length || 12 },
           { label: "LATENCY", value: `${elapsed.toFixed(1)}s` }
         ]}
         dynamicMessages={dynamicMessages.length > 0 ? dynamicMessages : [progress.phase || "Initializing agents..."]}

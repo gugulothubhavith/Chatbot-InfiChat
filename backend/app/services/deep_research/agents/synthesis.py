@@ -37,14 +37,15 @@ Write a comprehensive, well-structured research report in Markdown. Include:
 3. **Evidence For** (supporting arguments with citations)
 4. **Evidence Against** (contradicting arguments with citations)
 5. **Timeline of Key Events** (if relevant)
-6. **Analysis & Discussion** (synthesize the evidence)
-7. **Conclusion**
-8. **Sources** (numbered list)
+6. **Data Visualizations** (Create at least one Mermaid chart, e.g., graph LR, pie, or gantt, to visualize the Knowledge Graph, Timeline, or key statistics)
+7. **Analysis & Discussion** (synthesize the evidence)
+8. **Conclusion**
+9. **Sources** (numbered list)
 
-Citation format: Use [1], [2], etc. inline and list full references at the end.
+Citation format: You MUST use standard brackets like [1], [2] inline. NEVER use the 【1†L1-L3】 format. List full references at the end.
 
 Be objective, balanced, and thorough. Highlight areas of consensus AND controversy.
-Write the FULL report — do not abbreviate or use placeholders."""
+Write the FULL report — do not abbreviate or use placeholders. If using Mermaid charts, format them inside standard ```mermaid code blocks."""
 
 
 async def run(state: ResearchState, llm_call) -> ResearchState:
@@ -102,7 +103,11 @@ async def run(state: ResearchState, llm_call) -> ResearchState:
 
     try:
         response = await llm_call([{"role": "user", "content": prompt}])
+        
+        import re
         full_markdown = response.strip()
+        # Clean up stray RAG citations (e.g. 【3†L1-L3】 -> [3])
+        full_markdown = re.sub(r'【(\d+)(?:†[^】]+)?】', r'[\1]', full_markdown)
 
         # Extract structured sections (best effort)
         key_findings = []

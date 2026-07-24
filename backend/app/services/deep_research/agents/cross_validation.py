@@ -60,19 +60,24 @@ Return ONLY valid JSON array."""
             supporting = claim_data.get("supporting_sources", [])
             contradicting = claim_data.get("contradicting_sources", [])
 
-            # Determine stance
-            if len(contradicting) > 0 and len(supporting) > len(contradicting):
+            # Map source indices to actual source objects
+            sup_sources = [top_sources[i-1] for i in supporting if 0 < i <= len(top_sources)]
+            con_sources = [top_sources[i-1] for i in contradicting if 0 < i <= len(top_sources)]
+            
+            sup_ids = [s.id for s in sup_sources]
+            con_ids = [s.id for s in con_sources]
+            
+            sup_domains = set([s.domain for s in sup_sources])
+
+            # Determine stance with strict corroboration (Requires >= 2 distinct domains)
+            if len(contradicting) > 0 and len(sup_domains) > len(contradicting):
                 stance = Stance.PARTIAL
-            elif len(contradicting) >= len(supporting) and len(contradicting) > 0:
+            elif len(contradicting) >= len(sup_domains) and len(contradicting) > 0:
                 stance = Stance.CONTRADICTS
-            elif len(supporting) >= 2:
+            elif len(sup_domains) >= 2:
                 stance = Stance.CONFIRMS
             else:
                 stance = Stance.NOISE
-
-            # Map source indices to IDs
-            sup_ids = [top_sources[i-1].id for i in supporting if 0 < i <= len(top_sources)]
-            con_ids = [top_sources[i-1].id for i in contradicting if 0 < i <= len(top_sources)]
 
             facts.append(FactClaim(
                 claim=claim_data.get("claim", ""),
@@ -80,7 +85,7 @@ Return ONLY valid JSON array."""
                 contradicting_sources=con_ids,
                 stance=stance,
                 confidence=claim_data.get("confidence", 0.5),
-                source_count=len(supporting) + len(contradicting),
+                source_count=len(sup_ids) + len(con_ids),
             ))
 
     except Exception as e:

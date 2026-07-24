@@ -10,6 +10,8 @@ Multi-engine approach:
 from app.core.json_utils import extract_json_from_text
 import json
 import logging
+# Silence noisy trafilatura warnings about empty pages
+logging.getLogger("trafilatura").setLevel(logging.ERROR)
 import time
 import re
 from urllib.parse import urlparse
@@ -77,10 +79,17 @@ async def fetch_url(url: str, timeout: float = 15.0) -> dict:
             resp.raise_for_status()
             html = resp.text
             content_type = resp.headers.get("content-type", "")
+            
+            # Check for JS wall or soft blocks
+            if len(html) < 1500 and ("enable javascript" in html.lower() or "cloudflare" in html.lower()):
+                raise ValueError("JavaScript wall detected")
+                
     except Exception as e:
-        logger.debug(f"Fetch failed for {url}: {e}")
-        _cache_set(cache_key, result)
-        return result
+        logger.debug(f"HTTPx fetch failed or blocked for {url}: {e}. Falling back to Playwright.")
+        html, content_type = await _fetch_playwright(url)
+        if not html:
+            _cache_set(cache_key, result)
+            return result
 
     # PDF detection
     if "application/pdf" in content_type or url.lower().endswith(".pdf"):
@@ -141,6 +150,31 @@ async def fetch_url(url: str, timeout: float = 15.0) -> dict:
     return result
 
 
+async def _fetch_playwright(url: str, timeout: float = 20.0):
+    """Fallback fetcher using headless Chromium to defeat JS walls and blockers."""
+    try:
+        from playwright.async_api import async_playwright
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            )
+            response = await page.goto(url, wait_until="networkidle", timeout=timeout*1000)
+            
+            if not response:
+                await browser.close()
+                return None, None
+                
+            content_type = response.headers.get("content-type", "text/html")
+            html = await page.content()
+            await browser.close()
+            
+            return html, content_type
+    except Exception as e:
+        logger.debug(f"Playwright fetch failed for {url}: {e}")
+        return None, None
+
+
 async def _extract_pdf(url: str, timeout: float = 20.0) -> dict:
     """Download and extract text from a PDF URL."""
     result = {"url": url, "title": "", "text": "", "description": "", "success": False}
@@ -179,6 +213,50 @@ async def _extract_pdf(url: str, timeout: float = 20.0) -> dict:
 
 
 # ── Search ───────────────────────────────────────────────
+
+async def search_searxng(query: str, max_results: int = 10, engines: str = "google,bing,duckduckgo,wikipedia,qwant", time_range: str = "") -> List[dict]:
+    """Search SearxNG via REST API for highly advanced multi-engine results."""
+    import os
+    import httpx
+    
+    searxng_url = os.environ.get("SEARXNG_URL", "http://localhost:8080").rstrip("/")
+    url = f"{searxng_url}/search"
+    params = {
+        "q": query,
+        "format": "json",
+        "engines": engines,
+        "categories": "general,news",
+        "language": "en-US",
+        "safesearch": "1",
+    }
+    if time_range:
+        params["time_range"] = time_range
+    
+    cache_key = f"searxng:{engines}:{time_range}:{query}:{max_results}"
+    cached = _cache_get(cache_key)
+    if cached:
+        return cached["results"]
+
+    results = []
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+            
+            for r in data.get("results", [])[:max_results]:
+                results.append({
+                    "title": r.get("title", ""),
+                    "url": r.get("url", ""),
+                    "snippet": r.get("content", ""),
+                    "source_type": "web"
+                })
+        logger.info(f"SearxNG found {len(results)} results for '{query[:60]}'")
+    except Exception as e:
+        logger.warning(f"SearxNG search failed for '{query[:60]}': {e}")
+        
+    _cache_set(cache_key, {"results": results})
+    return results
 
 async def search_duckduckgo(query: str, max_results: int = 5) -> List[dict]:
     """Search DuckDuckGo and return structured results.
@@ -256,17 +334,24 @@ Make the results specific, factual-sounding, and relevant to the query. Do NOT u
         response = await llm_call_fn([{"role": "user", "content": prompt}])
         text = response.strip()
         
-        # Robustly extract JSON array
-        match = re.search(r'\[.*\]', text, re.DOTALL)
-        if match:
-            text = match.group(0)
-            
-        
-
-        # strict=False allows unescaped control chars like newlines inside strings
+        # Parse using the robust parser
         results = extract_json_from_text(text)
+        
+        # Handle case where LLM wrapped it in an object like {"results": [...]}
+        if isinstance(results, dict):
+            for k, v in results.items():
+                if isinstance(v, list):
+                    results = v
+                    break
+                    
         if not isinstance(results, list):
-            raise ValueError("LLM did not return a list")
+            # Try to force parsing just the array portion if we still don't have a list
+            match = re.search(r'\[.*\]', text, re.DOTALL)
+            if match:
+                results = extract_json_from_text(match.group(0))
+                
+        if not isinstance(results, list):
+            raise ValueError(f"LLM did not return a list. Returned type: {type(results)}")
 
         # Validate and normalize
         validated = []

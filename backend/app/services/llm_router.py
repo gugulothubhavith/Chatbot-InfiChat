@@ -18,6 +18,7 @@ GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 MODEL_MAP = {
     # Redirect legacy UI default to new NVIDIA default
     "llama-3.3-70b-versatile": settings.DEFAULT_CHAT_MODEL,
+    "llama-3.3-70b-groq-direct": "llama-3.3-70b-versatile", # Explicit bypass for deep research
     "llama3-70b": "llama-3.3-70b-versatile",
     "llama3-8b": "llama-3.1-8b-instant",
     "llama-3.1-8b-instant": "llama-3.1-8b-instant",
@@ -170,8 +171,8 @@ async def call_gemini(payload: dict, model: str = None, api_key: str = None, str
             logger.error(f"Gemini Call Failed ({model}): {e}")
             raise HTTPException(status_code=502, detail=f"Gemini API Error: {str(e)}")
 
-async def call_openrouter(payload: dict, api_key: str, stream: bool = False):
-    """Call OpenRouter API (OpenAI Compatible) with streaming support."""
+async def call_openrouter(payload: dict, api_key: str, stream: bool = False, url: str = OPENROUTER_CHAT_URL):
+    """Call OpenRouter API (or any OpenAI Compatible API) with streaming support."""
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -185,7 +186,7 @@ async def call_openrouter(payload: dict, api_key: str, stream: bool = False):
         async def stream_generator():
             async with httpx.AsyncClient(timeout=120.0) as client:
                 try:
-                    async with client.stream("POST", OPENROUTER_CHAT_URL, headers=headers, json=payload) as response:
+                    async with client.stream("POST", url, headers=headers, json=payload) as response:
                         if response.status_code != 200:
                             error_detail = await response.aread()
                             logger.error(f"OpenRouter Stream Error ({response.status_code}): {error_detail.decode()}")
@@ -219,7 +220,7 @@ async def call_openrouter(payload: dict, api_key: str, stream: bool = False):
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         try:
-            response = await client.post(OPENROUTER_CHAT_URL, headers=headers, json=payload)
+            response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
             return response.json()
         except Exception as e:
@@ -313,13 +314,18 @@ async def call_llm(request_type: str, payload: dict, key_group: str = None, stre
 
     try:
         # 1. Route Multi-Agent Specific Requests (Explicit Aliases)
-        if requested_alias == "planner_agent":
+        if requested_alias in ["planner_agent", "dr_large_2"]:
             api_key = settings.PLANNER_API_KEY or settings.DEFAULT_CHAT_API_KEY
+            
+            if requested_alias == "dr_large_2":
+                model_name = "nvidia/nemotron-3-super-120b-a12b"
+                payload["model"] = model_name
+                
             if model_name.startswith("z-ai/glm") or model_name.startswith("nvidia/") or (api_key and api_key.startswith("nvapi")):
-                logger.info(f"Routing Planner to NVIDIA: {model_name}")
+                logger.info(f"Routing {requested_alias} to NVIDIA: {model_name}")
                 return await call_nvidia(payload, api_key, stream=stream)
             else:
-                logger.info(f"Routing Planner to Groq: {model_name}")
+                logger.info(f"Routing {requested_alias} to Groq: {model_name}")
                 api_key = settings.GROQ_API_KEY
         elif requested_alias == "research_agent":
             logger.info(f"Routing Search Agent to Groq: {model_name}")
@@ -338,6 +344,14 @@ async def call_llm(request_type: str, payload: dict, key_group: str = None, stre
         elif model_name.startswith("nvidia/") or model_name.startswith("z-ai/"):
             logger.info(f"Auto-Routing NVIDIA model: {model_name}")
             return await call_nvidia(payload, settings.DEFAULT_CHAT_API_KEY, stream=stream)
+        elif model_name.startswith("tokenlayer/"):
+            logger.info(f"Routing to TokenLayer API: {model_name}")
+            model = model_name.split("/", 1)[1]
+            tokenlayer_payload = payload.copy()
+            tokenlayer_payload["model"] = model
+            api_key = "sk-BvIwgKnKKZDLnmIm256TAGeSVXrq7jXFne7YeN2TzhMaoWAc"
+            url = "https://api.tokenlayer.net/v1/chat/completions"
+            return await call_openrouter(tokenlayer_payload, api_key, stream=stream, url=url)
         elif "/" in model_name or "deepseek" in model_name.lower() or "claude" in model_name.lower():
             logger.info(f"Auto-Routing OpenRouter model: {model_name}")
             or_key = settings.CODER_API_KEY or os.getenv("OPENROUTER_API_KEY")
@@ -345,6 +359,7 @@ async def call_llm(request_type: str, payload: dict, key_group: str = None, stre
         elif key_group == "vision" or model_name == settings.VISION_MODEL:
             logger.info(f"Routing Vision to Gemini: {model_name}")
             return await call_gemini(payload, stream=stream)
+
         
         # 3. Default Groq Routing (Llama, Mixtral, etc.)
         logger.info(f"Routing '{request_type}' (stream={stream}) to Groq Model: {model_name}")
@@ -399,6 +414,10 @@ async def call_llm(request_type: str, payload: dict, key_group: str = None, stre
             except Exception as e:
                 logger.error(f"Groq Call Failed ({model_name}): {e}")
                 raise HTTPException(status_code=502, detail=f"Groq API Error: {str(e)}")
+    except HTTPException as http_exc:
+        # Re-raise so Tenacity can catch and retry
+        logger.warning(f"API Rate limit or server error (Tenacity will retry): {http_exc.detail}")
+        raise
     except Exception as exc:
         error_msg = str(exc)
         logger.error(f"Routing Failure: {error_msg}")
@@ -406,4 +425,5 @@ async def call_llm(request_type: str, payload: dict, key_group: str = None, stre
             async def error_gen():
                 yield f"\n❌ [Routing Error]: {error_msg}"
             return error_gen()
+        raise HTTPException(status_code=502, detail=f"Routing Error: {error_msg}")
         raise exc

@@ -459,3 +459,43 @@ def delete_document(filename: str) -> bool:
     except Exception as e:
         logger.error(f"Delete document error: {e}")
         raise HTTPException(500, f"Failed to delete document: {e}")
+
+def purge_old_research(months_old: int = 6) -> int:
+    """Deletes deep research data older than the specified number of months."""
+    import time
+    
+    collection = _get_backend()
+    
+    # Check if we fell back to FAISS (which doesn't support metadata deletion natively via the same API)
+    if isinstance(collection, _FaissStore):
+        logger.info("Auto-TTL purge not supported for FAISS backend.")
+        return 0
+    
+    # Calculate timestamp threshold
+    seconds_in_month = 30 * 24 * 60 * 60
+    threshold_ts = int(time.time()) - (months_old * seconds_in_month)
+    
+    try:
+        # ChromaDB syntax for metadata filtering
+        # We target items from deep_research that have a timestamp older than threshold
+        where_filter = {
+            "$and": [
+                {"source": "deep_research"},
+                {"timestamp": {"$lt": threshold_ts}}
+            ]
+        }
+        
+        # In Chroma, delete() doesn't return the count directly, so we can do a get() to see how many match
+        matching = collection.get(where=where_filter, include=["metadatas"])
+        count = len(matching["ids"]) if matching and "ids" in matching else 0
+        
+        if count > 0:
+            collection.delete(where=where_filter)
+            logger.info(f"Auto-TTL: Purged {count} expired deep research items older than {months_old} months.")
+        else:
+            logger.info("Auto-TTL: No expired deep research items found.")
+            
+        return count
+    except Exception as e:
+        logger.error(f"Auto-TTL purge error: {e}")
+        return 0

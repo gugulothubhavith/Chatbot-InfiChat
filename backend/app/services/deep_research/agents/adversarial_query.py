@@ -1,106 +1,105 @@
-"""Agent 3: AdversarialQueryAgent — Generates 20 multi-angle search queries."""
+"""Agent 3: AdversarialQueryAgent — Generates multi-angle search queries with intelligent engine routing."""
 
+import json
 import logging
+from typing import List, Dict, Any
+from app.core.json_utils import extract_json_from_text
 from app.services.deep_research.models import ResearchState, SearchQuery
 from app.services.deep_research.utils.nlp import extract_keywords
 
 logger = logging.getLogger(__name__)
 
-# Query templates for different categories (GPT-free)
-TEMPLATES = {
-    "supporting": [
-        "{topic} benefits advantages evidence",
-        "{topic} research confirms supports",
-        "why {topic} is important significant",
-    ],
-    "debunking": [
-        "{topic} criticism problems risks",
-        "{topic} debunked myth misconception",
-        "arguments against {topic} limitations",
-    ],
-    "academic": [
-        "{topic} peer reviewed study research paper",
-        "{topic} systematic review meta-analysis",
-        "{topic} journal publication findings",
-    ],
-    "news": [
-        "{topic} latest news 2024 2025",
-        "{topic} recent developments updates",
-        "{topic} breaking news announcement",
-    ],
-    "data": [
-        "{topic} statistics data numbers report",
-        "{topic} survey results percentage",
-        "{topic} market size growth trends",
-    ],
-    "temporal": [
-        "{topic} history timeline evolution",
-        "{topic} future predictions forecast",
-        "{topic} before and after comparison",
-    ],
-    "regional": [
-        "{topic} global international comparison",
-        "{topic} country differences regional",
-    ],
-}
+PROMPT_TEMPLATE = """You are an elite research query generator. Given the topic and research plan, generate exactly 15 highly optimized search queries.
 
+Topic: "{topic}"
+Key Aspects: {key_aspects}
 
-async def run(state: ResearchState, llm_call, critic_feedback: str = "") -> ResearchState:
-    """Generate 20 adversarial queries across 7 categories."""
+For each query, you must choose:
+1. The exact query string.
+2. The category (supporting, debunking, academic, news, data, temporal, regional).
+3. The target_engines. Choose a comma-separated list of the best engines for this specific query. Options include:
+   - "google,bing,duckduckgo,qwant" (General Web)
+   - "google news,bing news" (News)
+   - "scholar,arxiv,pubmed" (Academic)
+   - "github,stackoverflow" (IT/Code)
+   - "reddit,hackernews" (Forums/Discussions)
+4. The time_range. If the query requires recent info, specify "month", "week", or "day". If historical/general, use "year" or "".
+
+Return ONLY a JSON array in this exact format:
+[
+  {{
+    "query": "exact search string",
+    "category": "news",
+    "priority": 8,
+    "target_engines": "google news,bing news",
+    "time_range": "month"
+  }},
+  ...
+]
+"""
+
+async def run(state: ResearchState, llm_call, critic_feedback: str = "", targeted_queries: List[str] = None) -> ResearchState:
+    """Generate intelligent queries using LLM."""
+    if targeted_queries is None:
+        targeted_queries = []
     topic = state.brief.topic if state.brief else state.query
-    keywords = extract_keywords(state.query, top_n=5)
+    key_aspects = state.brief.key_aspects if state.brief else []
 
-    queries = []
-    query_id = 0
+    if critic_feedback:
+        topic += f" (Focus on feedback: {critic_feedback})"
 
-    # 1. Queries from research plan
-    if state.plan:
-        for subtopic in state.plan.subtopics:
-            for q in subtopic.queries:
-                query_id += 1
-                queries.append(SearchQuery(
-                    query=q,
-                    category="plan",
-                    priority=8 if subtopic.priority == "high" else 5,
+    prompt = PROMPT_TEMPLATE.format(topic=topic, key_aspects=key_aspects)
+
+    try:
+        response = await llm_call([{"role": "user", "content": prompt}])
+        text = response.strip()
+        data = extract_json_from_text(text)
+        
+        if not isinstance(data, list):
+            raise ValueError("LLM did not return a list")
+
+        unique = []
+        seen = set()
+        
+        # Prepend targeted surgical queries from the critic
+        for tq in targeted_queries:
+            q_str = tq.strip()
+            if q_str and q_str.lower() not in seen:
+                seen.add(q_str.lower())
+                unique.append(SearchQuery(
+                    query=q_str, category="targeted_surgical", priority=10, target_engines="google,bing"
                 ))
 
-    # 2. Template-based queries across categories
-    for category, templates in TEMPLATES.items():
-        for template in templates:
-            q = template.format(topic=topic)
-            query_id += 1
-            queries.append(SearchQuery(
-                query=q,
-                category=category,
-                priority=7 if category in ("supporting", "academic") else 5,
+        for item in data[:20]:
+            q_str = item.get("query", "").strip()
+            if not q_str or q_str.lower() in seen:
+                continue
+            seen.add(q_str.lower())
+            
+            priority_val = item.get("priority", 5)
+            try:
+                priority_int = int(priority_val) if str(priority_val).strip() != "" else 5
+            except ValueError:
+                priority_int = 5
+                
+            unique.append(SearchQuery(
+                query=q_str,
+                category=item.get("category", "general"),
+                priority=priority_int,
+                target_engines=item.get("target_engines", "google,bing,duckduckgo"),
+                time_range=item.get("time_range", "")
             ))
+            
+        state.queries = unique
+        logger.info(f"AdversarialQuery generated {len(unique)} dynamic queries (including {len(targeted_queries)} targeted)")
+        
+    except Exception as e:
+        logger.error(f"AdversarialQuery LLM failed: {e}. Falling back to default.")
+        state.queries = [
+            SearchQuery(query=topic, priority=10, target_engines="google,bing", time_range=""),
+            SearchQuery(query=f"{topic} latest news", priority=8, target_engines="google news,bing news", time_range="month"),
+            SearchQuery(query=f"{topic} research paper", priority=8, target_engines="scholar,arxiv", time_range="year"),
+            SearchQuery(query=f"{topic} discussion", priority=7, target_engines="reddit,hackernews", time_range="year"),
+        ]
 
-    # 3. Keyword-expanded queries
-    for kw in keywords[:3]:
-        queries.append(SearchQuery(
-            query=f"{topic} {kw}",
-            category="supporting",
-            priority=6,
-        ))
-
-    # 4. Critic feedback queries (if looping)
-    if critic_feedback:
-        queries.append(SearchQuery(
-            query=f"{topic} {critic_feedback}",
-            category="supporting",
-            priority=9,
-        ))
-
-    # Deduplicate and cap at 20
-    seen = set()
-    unique = []
-    for q in sorted(queries, key=lambda x: x.priority, reverse=True):
-        normalized = q.query.lower().strip()
-        if normalized not in seen:
-            seen.add(normalized)
-            unique.append(q)
-        if len(unique) >= 20:
-            break
-
-    state.queries = unique
     return state
